@@ -1,0 +1,1123 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Upload your lab reports and see every result in one private dashboard. Free.">
+<meta property="og:title" content="Labtrail: your lab results in one place">
+<meta property="og:description" content="Upload a lab report PDF or photo and get a clean dashboard with trends, scans and vaccines. Your data stays in your browser.">
+<meta property="og:type" content="website">
+<script>window.LABTRAIL_API='/api/extract';try{if(!sessionStorage.getItem('lt.hit')){sessionStorage.setItem('lt.hit','1');fetch('/api/hit',{method:'POST',keepalive:true})}}catch(e){}</script>
+<script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)}</script>
+<script defer src="/_vercel/insights/script.js"></script>
+<title>Labtrail</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Lora:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+/* Layout: warm paper background, amber accent, Lora for headings and figures. Priority bar first, then marker cards, notes pinned to charts. */
+:root{
+  --bg:#F9F6F0; --surface:#FFFFFF; --surface2:#F4F0E8; --ink:#1A1714; --ink2:#5C5449; --muted:#6F675B; --line:#E7E1D6;
+  --accent:#9A5A14; --accent-ink:#FFFFFF; --band:rgba(184,112,32,.13); --amber-line:rgba(154,90,20,.28);
+  --ok:#1E6B3E; --ok-bg:#E6F4ED; --high:#B25E0B; --high-bg:#FFF1DC; --low:#1A4F8A; --low-bg:#E5EEF8; --none:#6F665A; --none-bg:#EFEAE0;
+  --warn-bg:#FDF3E3; --warn:#7A4A00;
+  --sans:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --serif:'Lora',Georgia,serif; --mono:'DM Sans',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#181510; --surface:#211E17; --surface2:#2B2720; --ink:#F0ECE4; --ink2:#A09585; --muted:#92877A; --line:#38332A;
+  --accent:#E09040; --accent-ink:#181510; --band:rgba(224,144,64,.17); --amber-line:rgba(224,144,64,.3);
+  --ok:#4CAF78; --ok-bg:#182A20; --high:#E8A050; --high-bg:#2B1F10; --low:#6A9AE0; --low-bg:#121C30; --none:#92877A; --none-bg:#2B2720;
+  --warn-bg:#2A2010; --warn:#E0B060; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#181510; --surface:#211E17; --surface2:#2B2720; --ink:#F0ECE4; --ink2:#A09585; --muted:#92877A; --line:#38332A;
+  --accent:#E09040; --accent-ink:#181510; --band:rgba(224,144,64,.17); --amber-line:rgba(224,144,64,.3);
+  --ok:#4CAF78; --ok-bg:#182A20; --high:#E8A050; --high-bg:#2B1F10; --low:#6A9AE0; --low-bg:#121C30; --none:#92877A; --none-bg:#2B2720;
+  --warn-bg:#2A2010; --warn:#E0B060; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;margin:0;
+  padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1040px;margin:0 auto}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.top{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.logo{font-weight:600;font-size:1.25rem;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;margin-right:auto}
+.logo svg{width:22px;height:22px}
+.tabs{display:flex;gap:2px}
+.tab{background:none;border:0;padding:8px 12px;border-radius:8px;color:var(--ink2);font-weight:500}
+.tab[aria-current="page"]{background:var(--surface2);color:var(--ink)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:500}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--high);border-color:var(--high)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:5px 10px;font-size:.85rem}
+.banner{margin-top:16px;padding:12px 14px;border-radius:10px;background:var(--warn-bg);color:var(--warn);display:flex;gap:10px 16px;align-items:center;flex-wrap:wrap}
+.banner .grow{flex:1;min-width:200px}
+.summary{margin:20px 0 4px;color:var(--ink2)}
+.attn{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:.85rem;display:inline-flex;gap:8px;align-items:center}
+h2.cat{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600;margin:28px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:6px;min-width:0;width:100%}
+.card:hover{border-color:var(--accent)}
+.card .name{font-weight:500;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.card .val{font-family:var(--mono);font-size:1.7rem;font-weight:500;line-height:1.1;font-variant-numeric:tabular-nums}
+.card .val small{font-size:.8rem;color:var(--muted);font-weight:400;margin-left:4px}
+.card .meta{font-size:.8rem;color:var(--muted)}
+.pill{font-size:.74rem;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;display:inline-flex;gap:4px;align-items:center}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.high{background:var(--high-bg);color:var(--high)}
+.pill.low{background:var(--low-bg);color:var(--low)} .pill.above,.pill.below{background:var(--ok-bg);color:var(--ok)} .pill.none{background:var(--none-bg);color:var(--none)}
+svg.spark{width:100%;height:auto;display:block}
+.spark .line{fill:none;stroke:var(--accent);stroke-width:1.75;stroke-linejoin:round;stroke-linecap:round}
+.spark .dot{fill:var(--accent)} .spark .end{fill:var(--accent);stroke:var(--surface);stroke-width:2}
+.spark .band{fill:var(--band)} .spark .grid{stroke:var(--line);stroke-width:1}
+.spark text{fill:var(--muted);font:10px var(--mono)}
+.sheet-back{position:fixed;inset:0;background:rgba(5,15,18,.55);display:flex;align-items:flex-end;justify-content:center;z-index:10;padding:0}
+.sheet{background:var(--bg);width:100%;max-width:760px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;padding:20px max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+@media(min-width:800px){.sheet-back{align-items:center}.sheet{border-radius:16px}}
+.sheet h3{margin:0;font-size:1.2rem}
+.tbl{width:100%;border-collapse:collapse;font-size:.9rem}
+.tbl th{text-align:left;color:var(--muted);font-weight:500;font-size:.78rem;padding:6px 8px 6px 0;border-bottom:1px solid var(--line)}
+.tbl td{padding:8px 8px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.scroll{overflow-x:auto}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;margin-top:18px}
+.panel h2{margin:0 0 6px;font-size:1.1rem}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+.drop{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;border:1.5px dashed var(--line);border-radius:12px;padding:30px 16px;background:var(--surface2);cursor:pointer}
+.drop.over,.drop:hover{border-color:var(--accent)}
+.drop strong{font-size:1.05rem}
+.files{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.files li{display:flex;justify-content:space-between;gap:10px;background:var(--surface2);padding:6px 10px;border-radius:8px;align-items:center;min-width:0}
+.files li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:14px 0}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:500}
+input[type=text],input[type=date],input[type=number],select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0;width:100%;color:var(--ink)}
+.row{display:grid;grid-template-columns:28px minmax(150px,1.5fr) 110px 100px minmax(110px,1fr);gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.row.off{opacity:.45}
+.row .calc{font-size:.8rem;color:var(--muted)}
+.row .calc.warn{color:var(--warn);font-weight:500}
+@media(max-width:700px){.row{grid-template-columns:28px 1fr 1fr}.row .sel{grid-column:2/4}.row .calc{grid-column:2/4}}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}}
+.err{background:var(--high-bg);color:var(--high);padding:10px 12px;border-radius:8px;margin-top:12px}
+.rep{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.foot{margin-top:40px;color:var(--muted);font-size:.8rem;max-width:68ch}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 12px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.logo,.panel h2,.sheet h3,.alert-t{font-family:var(--serif);font-weight:500}
+.card .val{font-family:var(--serif)}
+.alert{margin-top:16px;padding:14px 16px;border-radius:12px;background:var(--warn-bg);border:1px solid var(--amber-line)}
+.alert.ok{background:var(--ok-bg);border-color:transparent;color:var(--ok)}
+.alert-t{font-size:1.05rem}
+.alert-s{margin:2px 0 10px;color:var(--ink2);font-size:.85rem}
+.alert-l{display:flex;flex-direction:column;gap:8px}
+.alert-i{display:flex;gap:10px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--amber-line);border-radius:10px;padding:8px 12px;flex-wrap:wrap}
+.alert-i:hover{border-color:var(--accent)}
+.spark .note{stroke:var(--accent);stroke-dasharray:3 3;stroke-width:1;opacity:.75}
+.spark .notec{fill:var(--accent)}
+.spark .notet{fill:var(--accent-ink);font:600 9px var(--sans)}
+.nlist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:.88rem}
+.nlist b{display:inline-flex;width:18px;height:18px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:.7rem;align-items:center;justify-content:center;margin-right:6px}
+.pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:22px 0 14px}
+.pt{font-family:var(--serif);font-weight:500;font-size:1.6rem;margin:0 0 2px;letter-spacing:-.01em}
+.tl{position:relative;padding:8px 0 0 30px}
+.tl:before{content:"";position:absolute;left:7px;top:14px;bottom:20px;width:2px;background:var(--line)}
+.tle{position:relative;margin-bottom:26px}
+.tdot{position:absolute;left:-30px;top:2px;width:14px;height:14px;border-radius:50%;border:3px solid var(--surface);box-shadow:0 0 0 2px var(--line)}
+.tdot.green{background:var(--ok)} .tdot.amber{background:var(--accent)}
+.tld{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.tlt{font-family:var(--serif);font-size:1.1rem;margin:2px 0 10px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.tile{background:var(--surface2);border-radius:10px;padding:10px 12px;min-width:0}
+.tile .l{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);overflow-wrap:anywhere}
+.tile .v{font-family:var(--serif);font-size:1.15rem;margin-top:2px;overflow-wrap:anywhere}
+.tile .v small{font-family:var(--sans);font-size:.72rem;color:var(--muted)}
+.tile .sub{font-size:.74rem;color:var(--muted);margin-top:2px}
+.s-ok,.s-above,.s-below{color:var(--ok)} .s-high{color:var(--high)} .s-low{color:var(--low)} .s-none{color:var(--ink)}
+.scan .sh{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap}
+.scan .st{font-family:var(--serif);font-weight:500;font-size:1.15rem;margin:0}
+.insight{margin-top:12px;padding:10px 14px;background:var(--warn-bg);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:.92rem}
+.insight strong{color:var(--accent)}
+.srow{display:grid;grid-template-columns:minmax(130px,1.4fr) 90px 80px minmax(110px,1fr) 130px 36px;gap:8px;align-items:center;padding:6px 0}
+.frow{display:grid;grid-template-columns:28px minmax(120px,1fr) minmax(120px,1fr);gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.frow.off{opacity:.45}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.vlist{padding:4px 16px;margin-top:0}
+.vrow{border-bottom:1px solid var(--line)} .vrow:last-child{border-bottom:0}
+.vhead{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;background:none;border:0;padding:12px 0;text-align:left}
+.vbody{padding:0 0 16px}
+.btn.off{opacity:.5;cursor:not-allowed}
+@media(max-width:760px){
+  .tabs{order:3;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tab{white-space:nowrap}
+  .srow{grid-template-columns:1fr 1fr}
+  .srow input:first-child,.srow select{grid-column:1/-1}
+  
+}
+
+.ico{flex:none;vertical-align:-3px}
+h2.cat{display:flex;align-items:center;gap:8px}h2.cat .ico{color:var(--accent)}
+.hero{display:flex;align-items:center;gap:16px;margin:20px 0 0;flex-wrap:wrap}
+.hero .summary{margin:0}
+.ring .ringt{font:600 15px var(--serif);fill:var(--ink)}
+.rleg{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--ink2);margin-top:6px}
+.rleg b{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.gauge{position:relative;height:6px;border-radius:3px;background:var(--surface2);margin:8px 0 4px}
+.card .gauge{background:var(--line)}
+.gauge.big{height:10px;border-radius:5px;margin:14px 0 6px}
+.gauge .gb{position:absolute;top:0;bottom:0;background:var(--ok);opacity:.32;border-radius:3px}
+.gauge .gm{position:absolute;top:-3px;bottom:-3px;width:4px;border-radius:2px;background:var(--ink);transform:translateX(-50%)}
+.gauge .gm.high{background:var(--high)} .gauge .gm.low{background:var(--low)} .gauge .gm.ok,.gauge .gm.above,.gauge .gm.below{background:var(--ok)}
+.tile .gauge{background:var(--line)}
+.tile .mspark{display:block;margin-top:4px}
+.makeup{margin-top:14px}
+.mk-t{font-size:.78rem;color:var(--muted);margin-bottom:6px}
+.mk-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line)}
+.mk-bar i{display:block;height:100%}
+.mk-l{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:.8rem;color:var(--ink2);margin-top:6px}
+.mk-l b{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+.cscale{position:relative;display:flex;height:12px;border-radius:6px;overflow:visible}
+.cscale i{display:block;height:100%} .cscale i:first-child{border-radius:6px 0 0 6px} .cscale i:nth-child(3){border-radius:0 6px 6px 0}
+.cscale em{position:absolute;top:-4px;width:4px;height:20px;background:var(--ink);border-radius:2px;transform:translateX(-50%);font-style:normal}
+.cscale em span{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:.65rem;font-weight:600;color:var(--ink)}
+.scan .st{display:flex;align-items:center;gap:8px}.scan .st .ico{color:var(--accent)}
+.vsum{display:flex;align-items:center;gap:18px;margin:18px 0 6px;flex-wrap:wrap}
+.consent{margin-top:14px;padding:12px 14px;background:var(--surface2);border-radius:10px;font-size:.88rem}
+.chk{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.chk input{margin-top:3px;width:16px;height:16px;flex:none}
+.btn.lg{padding:12px 20px;font-size:1rem;border-radius:10px}
+.landing{margin-top:28px;padding:8px 0 4px;max-width:680px}
+.lh{font-family:var(--serif);font-weight:500;font-size:clamp(1.7rem,5vw,2.4rem);line-height:1.15;letter-spacing:-.015em;margin:0}
+.ls{color:var(--ink2);font-size:1.05rem;margin:12px 0 0}
+.steps{list-style:none;display:flex;gap:10px 22px;flex-wrap:wrap;padding:0;margin:22px 0 0;color:var(--ink2);font-size:.9rem}
+.steps li{display:flex;align-items:center;gap:8px}
+.steps b{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--surface2);border:1px solid var(--line);align-items:center;justify-content:center;font-size:.75rem;color:var(--ink)}
+.exlabel{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.toolbar{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;margin:26px 0 6px}
+.linkbtn{background:none;border:0;color:var(--accent);font-weight:500;padding:6px 2px;text-decoration:underline;text-underline-offset:3px}
+.acc-s{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-top:10px;padding:0 14px}
+.acc{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:16px 2px;text-align:left}
+.acc .ico{color:var(--accent)}
+.acc .an{font-family:var(--serif);font-size:1.08rem}
+.acc .am{margin-left:auto;color:var(--muted);font-size:.84rem}
+.acc .chev{transition:transform .15s;color:var(--muted);flex:none}
+.acc[aria-expanded="true"] .chev,.thead[aria-expanded="true"] .chev{transform:rotate(180deg)}
+@media(prefers-reduced-motion:reduce){.acc .chev{transition:none}}
+.outc{color:var(--high);font-weight:600}
+.mlist{padding:0 0 12px}
+.mrow{display:grid;grid-template-columns:minmax(120px,1.6fr) minmax(90px,1fr) minmax(110px,1.2fr) auto;gap:4px 12px;align-items:center;width:100%;background:none;border:0;border-top:1px solid var(--line);padding:11px 2px;text-align:left}
+.mrow:first-child{border-top:0}
+.mrow:hover{background:var(--surface2)}
+.alert-i,.card,.tile{box-shadow:none}
+.tl .tiles .tile{background:var(--surface);border:1px solid var(--line)}
+.vlist{padding:0}
+.mn{font-weight:500}
+.mv{font-family:var(--serif);font-size:1.05rem;font-variant-numeric:tabular-nums}
+.mv small{font-family:var(--sans);font-size:.74rem;color:var(--muted);margin-left:4px}
+.md{font-size:.8rem;color:var(--muted)}
+@media(max-width:640px){.mrow{grid-template-columns:1fr auto;grid-template-areas:"n v" "d p"}.mrow .mn{grid-area:n}.mrow .mv{grid-area:v;text-align:right}.mrow .md{grid-area:d}.mrow .pill{grid-area:p;justify-self:end}}
+.thead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;width:100%;background:none;border:0;padding:0;text-align:left}
+.thead .tld,.thead .tlt{display:block}
+.thead .chev{color:var(--muted);margin-top:4px;transition:transform .15s}
+.tle .tiles{margin-top:12px}
+.panel{box-shadow:none}
+.tgt-box{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.tgt-box summary{cursor:pointer;font-weight:500}
+.remix{white-space:pre-wrap;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:12px;font:.82rem/1.5 var(--sans);margin:10px 0 0}
+.tb-actions{display:inline-flex;gap:6px;flex-wrap:wrap}
+@media print{
+  body{background:#fff;padding:0}
+  .top,.toolbar,.foot,.banner,.landing,#sheet,.actions,.alert-l button{display:none!important}
+  .acc{pointer-events:none} .acc .chev{display:none}
+  .acc-s,.tle,.card,.panel{break-inside:avoid;box-shadow:none}
+  .mrow{padding:6px 2px}
+}
+.vhead .ico{color:var(--accent);margin-right:8px}
+</style></head><body>
+<div class="wrap">
+  <div class="top">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 3 5-8 4 5"/><circle cx="20" cy="6" r="1.6" fill="var(--accent)"/></svg>Labtrail</div>
+    <nav class="tabs" aria-label="Sections">
+      <button class="tab" data-act="tab" data-tab="dash">Overview</button>
+      <button class="tab" data-act="tab" data-tab="history">History</button>
+      <button class="tab" data-act="tab" data-tab="scans">Scans</button>
+      <button class="tab" data-act="tab" data-tab="vax">Vaccines</button>
+      <button class="tab" data-act="tab" data-tab="more">More</button>
+    </nav>
+    <button class="btn primary" data-act="tab" data-tab="add">Add report</button>
+  </div>
+  <main id="app"></main>
+  <p class="foot">Labtrail reads your lab reports and shows each result next to the range printed on that report. It does not diagnose or give medical advice. Talk to a doctor about what your results mean for you.</p>
+  <p class="foot"><strong>Privacy.</strong> When you add a report, the file is sent to Claude (Anthropic) to read the numbers. Labtrail does not store your files or results on its servers; results stay in this browser only, so back them up from the Reports tab. Labtrail counts anonymous totals such as visits and reports read. Inside the Instagram app, open the link in Safari or Chrome so your data is not lost when the in-app browser closes.</p>
+</div>
+<div id="sheet" hidden></div>
+
+<script>
+/* ---------- marker catalogue ---------- */
+const CATS={heart:'Heart & lipids',metab:'Sugar & metabolism',organ:'Liver & kidney',horm:'Hormones & thyroid',blood:'Blood count',vit:'Vitamins',infl:'Inflammation',other:'Other markers'};
+const CAT_ORDER=['heart','metab','organ','horm','blood','vit','infl','other'];
+const M=(k,n,c,b,alts,si,same,fn)=>({k,n,c,b,alts:alts||[],si,same,fn});
+const KNOWN=[
+ M('ldl','LDL cholesterol','heart','mg/dL',[{u:'mmol/L',f:38.67}],{u:'mmol/L',f:38.67}),
+ M('hdl','HDL cholesterol','heart','mg/dL',[{u:'mmol/L',f:38.67}],{u:'mmol/L',f:38.67}),
+ M('chol','Total cholesterol','heart','mg/dL',[{u:'mmol/L',f:38.67}],{u:'mmol/L',f:38.67}),
+ M('nonhdl','Non-HDL cholesterol','heart','mg/dL',[{u:'mmol/L',f:38.67}],{u:'mmol/L',f:38.67}),
+ M('trig','Triglycerides','heart','mg/dL',[{u:'mmol/L',f:88.57}],{u:'mmol/L',f:88.57}),
+ M('apob','Apolipoprotein B','heart','mg/dL',[{u:'g/L',f:100}],{u:'g/L',f:100}),
+ M('lpa','Lipoprotein(a)','heart','nmol/L'),
+ M('glucose','Fasting glucose','metab','mg/dL',[{u:'mmol/L',f:18.016}],{u:'mmol/L',f:18.016}),
+ M('hba1c','HbA1c','metab','%',[{u:'mmol/mol',fn:v=>v/10.929+2.15}]),
+ M('insulin','Insulin','metab','µIU/mL',[{u:'pmol/L',f:0.144}],null,/^(uiu\/ml|miu\/l|mu\/l)$/),
+ M('uric','Uric acid','metab','mg/dL',[{u:'µmol/L',f:0.01681}],{u:'µmol/L',f:0.01681}),
+ M('alt','ALT','organ','U/L',[],null,/^(u\/l|iu\/l)$/),
+ M('ast','AST','organ','U/L',[],null,/^(u\/l|iu\/l)$/),
+ M('alp','Alkaline phosphatase','organ','U/L',[],null,/^(u\/l|iu\/l)$/),
+ M('creat','Creatinine','organ','mg/dL',[{u:'µmol/L',f:0.01131}],{u:'µmol/L',f:0.01131}),
+ M('egfr','eGFR','organ','mL/min/1.73m²',[],null,/ml\/min/),
+ M('tsh','TSH','horm','mIU/L',[],null,/^(miu\/l|uiu\/ml|mu\/l)$/),
+ M('testo','Total testosterone','horm','ng/dL',[{u:'ng/mL',f:100},{u:'nmol/L',f:28.84}],{u:'nmol/L',f:28.84}),
+ M('ftesto','Free testosterone','horm','ng/dL',[{u:'pg/mL',f:0.1},{u:'pmol/L',f:0.02884}],{u:'pmol/L',f:0.02884}),
+ M('btesto','Bioavailable testosterone','horm','ng/dL',[{u:'ng/mL',f:100}]),
+ M('shbg','SHBG','horm','nmol/L'),
+ M('cortisol','Cortisol','horm','µg/dL',[{u:'nmol/L',f:0.03625}],{u:'nmol/L',f:0.03625}),
+ M('hgb','Hemoglobin','blood','g/dL',[{u:'g/L',f:0.1}],{u:'g/L',f:0.1}),
+ M('wbc','White blood cells','blood','10³/µL',[],null,/^x?(10\^?3\/(ul|mm3)|10\^9\/l|e9\/l|k\/ul)$/),
+ M('plt','Platelets','blood','10³/µL',[],null,/^x?(10\^?3\/(ul|mm3)|10\^9\/l|e9\/l|k\/ul)$/),
+ M('vitd','Vitamin D (25-OH)','vit','ng/mL',[{u:'nmol/L',f:0.4006}],{u:'nmol/L',f:0.4006}),
+ M('crp','hs-CRP','infl','mg/L',[{u:'mg/dL',f:10}]),
+];
+const BYKEY=Object.fromEntries(KNOWN.map(e=>[e.k,e]));
+const norm=u=>String(u||'').toLowerCase().replace(/[µμ]/g,'u').replace(/³/g,'3').replace(/²/g,'2').replace(/[×*]/g,'x').replace(/\s+/g,'');
+/* returns {ok, f, fn} describing how to turn a printed value into the base unit */
+function unitRule(e,unit){
+  const n=norm(unit);
+  if(!e) return {ok:true,f:1};
+  if(n===norm(e.b)) return {ok:true,f:1};
+  if(e.same&&e.same.test(n)) return {ok:true,f:1};
+  for(const a of e.alts) if(norm(a.u)===n) return {ok:true,f:a.f,fn:a.fn};
+  return {ok:false,f:1};
+}
+const conv=(r,v)=>v==null?null:(r.fn?r.fn(v):v*r.f);
+function calc(row){
+  const e=BYKEY[row.key]; const v=Number(row.rawValue);
+  if(!e) return {value:v,unit:row.rawUnit||'',low:row.rawLow??null,high:row.rawHigh??null,warn:false,known:false};
+  const r=unitRule(e,row.rawUnit);
+  const val=isFinite(v)?conv(r,v):NaN;
+  return {value:val,unit:r.ok?e.b:(row.rawUnit||''),low:r.ok?conv(r,row.rawLow):(row.rawLow??null),high:r.ok?conv(r,row.rawHigh):(row.rawHigh??null),warn:!r.ok,known:true,changed:r.ok&&(r.f!==1||!!r.fn)};
+}
+
+/* ---------- state ---------- */
+const LS='labtrail.v1';
+const blank=()=>({sex:'',targets:{},rev:0,backupRev:0,reports:[],units:'us',notes:[],scans:[],vax:{},vaxCustom:[],hideSens:false});
+const fixState=j=>Object.assign(blank(),j,{reports:Array.isArray(j.reports)?j.reports:[],notes:Array.isArray(j.notes)?j.notes:[],scans:Array.isArray(j.scans)?j.scans:[],vax:(j.vax&&typeof j.vax==='object'&&!Array.isArray(j.vax))?j.vax:{},vaxCustom:Array.isArray(j.vaxCustom)?j.vaxCustom:[],units:j.units==='si'?'si':'us',sex:(j.sex==='m'||j.sex==='f')?j.sex:'',hideSens:!!j.hideSens,targets:(j.targets&&typeof j.targets==='object'&&!Array.isArray(j.targets))?j.targets:{}});
+function load(){try{const j=JSON.parse(localStorage.getItem(LS)||'null');if(j&&Array.isArray(j.reports))return fixState(j)}catch(e){}return blank()}
+function persist(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
+function save(){S.rev=(S.rev||0)+1;persist();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}
+let S=load();
+const ui={tab:'dash',step:'pick',files:[],draft:null,msg:'',ctl:null,progress:'',detail:null,confirmDel:null,confirmAll:false,note:'',scanForm:false,consent:false,printAll:false,cat:{},rep:{},vg:{},view:'list',allPrio:false,scan:null,scanBusy:false,vopen:null,vmsg:''};
+let sampleFn=null,downloadsFn=null;
+const HOSTED=()=>!!window.LABTRAIL_API;
+const lsGet=k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const needConsent=()=>HOSTED()&&!ui.consent;
+const consentHtml=()=>HOSTED()?`<div class="consent"><label class="chk"><input type="checkbox" id="consent" ${ui.consent?'checked':''}> <span>I understand my file is sent to Claude (Anthropic) to read the numbers. Labtrail does not store it. My results stay in this browser.</span></label><label class="f" style="margin-top:8px;max-width:260px">Access code<input type="text" id="acode" value="${esc(lsGet('lt.code'))}" placeholder="Enter your access code" autocomplete="off"></label></div>`:'';
+const track=(n)=>{try{window.va&&window.va.track&&window.va.track(n)}catch(e){}};
+/* hosted build sets window.LABTRAIL_API; the claude.ai artifact uses the viewer's own Claude instead */
+function blobB64(b){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(b)})}
+async function shrink(b){
+  try{const bm=await createImageBitmap(b);const sc=Math.min(1,1600/Math.max(bm.width,bm.height));
+    const cv=document.createElement('canvas');cv.width=Math.round(bm.width*sc);cv.height=Math.round(bm.height*sc);
+    const c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,cv.width,cv.height);c.drawImage(bm,0,0,cv.width,cv.height);
+    return await new Promise(r=>cv.toBlob(r,'image/jpeg',.85))}catch(e){return b}
+}
+const apiSample=()=>({
+  limits:async()=>({images:{maxCount:3}}),
+  json:async(prompt,{images,signal})=>{
+    const imgs=[];for(const b of images){const s=await shrink(b);imgs.push({media_type:s.type||'image/jpeg',data:await blobB64(s)})}
+    let r;try{r=await fetch(window.LABTRAIL_API,{method:'POST',headers:{'content-type':'application/json','x-access-code':lsGet('lt.code')},body:JSON.stringify({prompt,images:imgs}),signal})}
+    catch(e){throw {code:(e&&e.name==='AbortError')?'cancelled':'network'}}
+    let j=null;try{j=await r.json()}catch(e){}
+    if(!r.ok)throw {code:(j&&j.code)||'failed',message:j&&j.message};
+    return j.result;
+  }
+});
+(async()=>{
+  await 0;
+  if(window.LABTRAIL_API)sampleFn=apiSample();
+  else{try{sampleFn=await claude.use('sample')}catch(e){} try{downloadsFn=await claude.use('downloads')}catch(e){}}
+  render()})();
+
+/* ---------- example data (invented) ---------- */
+const DEMO=(()=>{
+  const dates=['2023-04-12','2024-05-03','2025-04-22','2026-03-18'];
+  const spec={ldl:[[128,141,152,136],null,130],chol:[[205,218,231,214],null,200],hdl:[[54,52,49,56],40,null],trig:[[96,110,124,98],null,150],
+   glucose:[[88,91,95,89],70,99],hba1c:[[5.2,5.3,5.4,5.3],null,5.7],vitd:[[24,31,38,44],30,100],creat:[[.94,.97,.96,.95],.7,1.3],
+   alt:[[22,25,31,24],0,45],tsh:[[1.8,2.1,1.9,2.0],.4,4],hgb:[[14.6,14.9,14.4,14.8],13,17.5],uric:[[6.1,6.4,7.4,6.9],3.7,7.7]};
+  const arr=dates.map((d,i)=>({id:'demo'+i,date:d,lab:'Example Lab',markers:Object.entries(spec).map(([k,[v,lo,hi]])=>{const e=BYKEY[k];return {key:k,label:e.n,cat:e.c,value:v[i],unit:e.b,low:lo,high:hi,flag:null}})}));
+  const fa=[{name:'Hepatitis B surface antigen',result:'Non-Reactive',flag:null,group:'Infectious disease'},{name:'Hepatitis C antibody',result:'Negative',flag:null,group:'Infectious disease'},{name:'HIV Ag/Ab',result:'Non-Reactive',flag:null,group:'Sexual health'},{name:'Syphilis',result:'Non-Reactive',flag:null,group:'Sexual health'}];
+  arr[3].findings=fa;arr[2].findings=fa;return arr;
+})();
+const isDemo=()=>S.reports.length===0;
+const DEMO_NOTES=[{id:'dn1',date:'2024-06-01',text:'Started eating oatmeal most mornings'},{id:'dn2',date:'2025-07-15',text:'Busy work period, less exercise'},{id:'dn3',date:'2025-11-01',text:'Began daily 30 minute walks'}];
+const reportsNow=()=>isDemo()?DEMO:S.reports;
+const notesNow=()=>S.notes.length?S.notes:(isDemo()?DEMO_NOTES:[]);
+const INFO={ldl:'Cholesterol carried in LDL particles, the kind that can build up in artery walls. The target depends on your overall heart risk, so ask your doctor which one fits you.',
+hdl:'Cholesterol carried in HDL particles, which carry cholesterol back to the liver. Higher is generally seen as favorable.',
+chol:'All the cholesterol in your blood: LDL, HDL and part of your triglycerides combined.',
+nonhdl:'Total cholesterol minus HDL, so all the cholesterol in particles that can build up in arteries. It does not depend on fasting.',
+trig:'Fat circulating in your blood. It rises after meals, alcohol and sugary foods, so a fasting sample is more consistent.',
+apob:'A count of the particles that carry cholesterol into artery walls. Each LDL-type particle carries one ApoB.',
+lpa:'An inherited LDL-like particle. Genetics set most of it, so it usually needs measuring only once.',
+glucose:'Blood sugar after not eating for at least 8 hours.',
+hba1c:'Your average blood sugar over roughly the last 2 to 3 months.',
+insulin:'The hormone that moves sugar from your blood into cells. Read it together with glucose.',
+uric:'A waste product from breaking down purines. High levels can form crystals in joints and cause gout in some people.',
+alt:'A liver enzyme. It rises when liver cells are irritated, and also after hard exercise.',
+ast:'An enzyme found in liver and muscle. It can rise after hard exercise.',
+alp:'An enzyme found in the liver, bile ducts and bone.',
+creat:'A waste product from muscle that the kidneys clear, used to estimate kidney function. People with more muscle can run higher.',
+egfr:'An estimate of how well your kidneys filter blood, calculated from creatinine, age and sex.',
+tsh:'The signal your pituitary gland sends to the thyroid. It rises when the thyroid is underactive and falls when it is overactive.',
+testo:'The main male sex hormone, present in everyone. Levels shift through the day and are usually checked in the morning. Low levels are the usual concern; a high result on its own usually is not.',
+cortisol:'A stress hormone that follows a daily rhythm and is highest in the morning.',
+hgb:'The protein in red blood cells that carries oxygen.',
+wbc:'Immune cells. The count rises with infection or inflammation.',
+plt:'Cell fragments that help your blood clot.',
+vitd:'Made in your skin from sunlight and found in some foods. Needed for bones and muscle.',
+ftesto:'The small share of testosterone that is not bound to proteins and is free to act in the body. It is a different test from total testosterone.',
+btesto:'Free testosterone plus the part loosely bound to albumin. A different test from total testosterone.',
+shbg:'A protein that binds sex hormones in the blood. It changes how much testosterone is free.',
+crp:'A protein the liver makes during inflammation. The high-sensitivity test picks up low-grade inflammation.'};
+
+/* ---------- helpers ---------- */
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=v=>{if(v==null||!isFinite(v))return '–';const a=Math.abs(v);const d=a>=100?0:a>=10?1:2;return String(Number(v.toFixed(d)))};
+const dShort=d=>new Date(d+'T00:00:00').toLocaleDateString('en-GB',{month:'short',year:'numeric'});
+const dLong=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'No date';
+const slug=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const hasT=()=>false;
+const effRange=p=>({low:p.low,high:p.high});
+/* Which side of the lab range actually matters. Only listed markers are one-sided; everything else counts both ways. */
+const RISK={ldl:'high',chol:'high',nonhdl:'high',trig:'high',apob:'high',lpa:'high',glucose:'high',hba1c:'high',insulin:'high',uric:'high',alt:'high',ast:'high',alp:'high',creat:'high',crp:'high',
+  hdl:'low',egfr:'low',testo:'low',ftesto:'low',btesto:'low'};
+/* Testosterone: a high result is only waved through when the lab printed a male-type range (upper limit well above a female range). */
+function benignHigh(p){
+  const k=p.key,r=RISK[k];
+  if(!r||r!=='low')return false;
+  if(k==='testo'||k==='ftesto'||k==='btesto'){if(S.sex==='m')return true;if(S.sex==='f')return false;const hi=p.high;return hi!=null&&hi>(k==='testo'?200:k==='ftesto'?20:80)}
+  return true;
+}
+function status(p){
+  const {low,high}=effRange(p);
+  let st='none';
+  if(high!=null&&p.value>high)st='high';
+  else if(low!=null&&p.value<low)st='low';
+  else if(high==null&&low==null){st=p.flag==='H'?'high':p.flag==='L'?'low':'none'}
+  else st='ok';
+  const r=p.key?RISK[p.key]:null;
+  if(st==='high'&&r==='low'&&benignHigh(p))return 'above';
+  if(st==='low'&&r==='high')return 'below';
+  if(st==='low'&&S.sex==='f'&&(p.key==='testo'||p.key==='ftesto'||p.key==='btesto'))return 'below';
+  return st;
+}
+const withTarget=m=>m;
+const SLAB={high:'▲ Above range',low:'▼ Below range',ok:'● In range',none:'– No range',above:'▲ Above range · not a concern',below:'▼ Below range · not a concern'};
+function meaning(s,p){
+  const st=status(p),k=s.key;
+  if(st==='above'){return k==='hdl'?' Higher is generally favorable.':' A high result here is usually not a concern on its own. Very high levels, especially if you take testosterone or supplements, are still worth discussing with your doctor.'}
+  if(st==='below')return ' Low is not usually the concern for this marker.';
+  if(st==='high'&&RISK[k]==='high')return ' For this marker, a high result is the direction that matters.';
+  if(st==='low'&&RISK[k]==='low')return ' For this marker, a low result is the direction that matters.';
+  if(st==='high'&&RISK[k]==='low')return S.sex==='f'?' In women, high testosterone can point to conditions such as PCOS, so a high result is flagged. Worth discussing with your doctor.':' Your lab printed a range that looks female-typical, so a high result is flagged. Set your sex in More if that is wrong.';
+  if(st==='below'&&S.sex==='f'&&k.endsWith('testo'))return ' Low testosterone is not usually the concern in women.';
+  return '';
+}
+function buildSeries(){
+  const map=new Map();
+  const reps=[...reportsNow()].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  for(const r of reps)for(const m of r.markers){
+    const key=m.key&&m.key!=='other'?m.key:'o:'+slug(m.label);
+    if(!map.has(key)){const e=BYKEY[m.key];map.set(key,{key,label:e?e.n:m.label,cat:e?e.c:'other',entry:e||null,rawUnit:m.unit,points:[]})}
+    const s=map.get(key);s.rawUnit=m.unit;
+    const p={key,date:r.date,lab:r.lab,value:m.value,low:m.low,high:m.high,flag:m.flag,rid:r.id};
+    const i=s.points.findIndex(x=>x.date===p.date);if(i>=0)s.points[i]=p;else s.points.push(p);
+  }
+  return [...map.values()].map(s=>{s.points.sort((a,b)=>(a.date||'').localeCompare(b.date||''));return s});
+}
+const useSI=s=>S.units==='si'&&s.entry&&s.entry.si;
+const sv=(s,v)=>v==null?null:(useSI(s)?v/s.entry.si.f:v);
+const su=s=>useSI(s)?s.entry.si.u:(s.entry?s.entry.b:s.rawUnit);
+function rangeText(s,p,labOnly){
+  const lo=sv(s,labOnly?p.low:effRange(p).low),hi=sv(s,labOnly?p.high:effRange(p).high);
+  if(lo!=null&&hi!=null)return fmt(lo)+'–'+fmt(hi);
+  if(hi!=null)return '< '+fmt(hi);
+  if(lo!=null)return '> '+fmt(lo);
+  return 'No range on report';
+}
+
+/* ---------- visual helpers: icons, rings, gauges ---------- */
+const ICONS={
+ heart:'<path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"/>',
+ metab:'<path d="M12 3s6 6.2 6 10.5a6 6 0 0 1-12 0C6 9.2 12 3 12 3z"/>',
+ organ:'<path d="M9 4C5.5 4 3 7.5 3 11.5S5.5 20 9 20c2 0 3-1.7 3-3.5 0-1.4.9-2 2-2 3 0 5-2 5-5s-2-5.5-5-5.5c-2 0-3 1-4 1-1 0-1.200-1-1-1z"/>',
+ horm:'<circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="7" r="2"/><circle cx="14" cy="17" r="3"/><path d="M9 9.500l3.500 5M15.500 8.500l-1 5.500"/>',
+ blood:'<circle cx="9" cy="12" r="5"/><circle cx="18" cy="8.500" r="2.800"/><circle cx="18" cy="16.500" r="2.300"/>',
+ vit:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.900 4.900L7 7M17 17l2.100 2.100M4.900 19.100L7 17M17 7l2.100-2.100"/>',
+ infl:'<path d="M12 3c1 4 5 5.500 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/>',
+ other:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+ inbody:'<circle cx="12" cy="5" r="2.500"/><path d="M8 21v-7H6l1-6h10l1 6h-2v7M10 21v-4M14 21v-4"/>',
+ cavi:'<path d="M2 12c3-8 5 8 8 0s5 8 8 0 3 4 4 0"/>',
+ cac:'<path d="M12 20s-7-4.600-7-10a4 4 0 0 1 7-2.500A4 4 0 0 1 19 10c0 5.400-7 10-7 10z"/><path d="M9 11h6"/>',
+ stress:'<path d="M2 12h5l2-6 4 12 2-6h7"/>',
+ bp:'<circle cx="12" cy="13" r="8"/><path d="M12 13l4-4M7 13h1M16 13h1M12 8v1"/>',
+ vax:'<path d="M18 3l3 3M16 5l3 3M7 14l9-9 3 3-9 9H7zM4 20l3-3M10 11l3 3"/>',
+ report:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>'
+};
+const ico=(n,sz=18)=>`<svg class="ico" width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||ICONS.other}</svg>`;
+function ring(parts,size,center,label){
+  const r=size/2-7,C=2*Math.PI*r,tot=parts.reduce((a,p)=>a+p.n,0)||1;let off=0;
+  let o=`<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(label)}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="9"/>`;
+  for(const p of parts){if(!p.n)continue;const len=C*p.n/tot;o+=`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${p.c}" stroke-width="9" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${size/2} ${size/2})"/>`;off+=len}
+  return o+`<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" class="ringt">${esc(center)}</text></svg>`;
+}
+function gauge(v,lo,hi,st,big){
+  if(!isFinite(v)||(lo==null&&hi==null))return '';
+  let a,b;
+  if(lo!=null&&hi!=null){const sp=hi-lo||1;a=lo-sp*.75;b=hi+sp*.75}
+  else if(hi!=null){a=0;b=hi*1.6}else{a=lo*.4;b=lo*1.8}
+  a=Math.min(a,v-Math.abs(v)*.05);b=Math.max(b,v+Math.abs(v)*.05);
+  const P=x=>Math.max(0,Math.min(100,(x-a)/(b-a)*100));
+  const l=lo!=null?P(lo):0,r=hi!=null?P(hi):100;
+  return `<div class="gauge ${big?'big':''}" aria-hidden="true"><i class="gb" style="left:${l.toFixed(1)}%;width:${(r-l).toFixed(1)}%"></i><i class="gm ${st}" style="left:${P(v).toFixed(1)}%"></i></div>`;
+}
+function parseRef(t){
+  t=String(t||'').replace(/,/g,'').toLowerCase();
+  let m=t.match(/(-?\d+(?:\.\d+)?)\s*(?:–|—|-|to)\s*(-?\d+(?:\.\d+)?)/);if(m)return {low:+m[1],high:+m[2]};
+  m=t.match(/(?:<|≤|below|under|less than|up to)\s*(-?\d+(?:\.\d+)?)/);if(m)return {low:null,high:+m[1]};
+  m=t.match(/(?:>|≥|above|over|more than|at least)\s*(-?\d+(?:\.\d+)?)/);if(m)return {low:+m[1],high:null};
+  return null;
+}
+function miniSpark(vals){
+  if(vals.length<2)return '';
+  const W=64,H=18,mn=Math.min(...vals),mx=Math.max(...vals),sp=mx-mn||1;
+  const pts=vals.map((v,i)=>`${(2+(W-4)*i/(vals.length-1)).toFixed(1)},${(H-3-(H-6)*(v-mn)/sp).toFixed(1)}`);
+  const last=pts[pts.length-1].split(',');
+  return `<svg class="mspark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${last[0]}" cy="${last[1]}" r="2.5" fill="var(--accent)"/></svg>`;
+}
+function bodyMakeup(s){
+  const g=re=>{const m=s.metrics.find(x=>re.test(x.label.toLowerCase()));const v=m?parseFloat(m.value):NaN;return isFinite(v)?v:null};
+  const w=g(/^weight/),mu=g(/skeletal muscle/),fa=g(/body fat (mass|\(?kg)|^fat mass/);
+  if(w==null||mu==null||fa==null||mu+fa>=w)return '';
+  const ot=w-mu-fa,pc=x=>(x/w*100).toFixed(1);
+  return `<div class="makeup"><div class="mk-t">Where your weight comes from</div><div class="mk-bar" role="img" aria-label="Muscle ${fmt(mu)} kg, fat ${fmt(fa)} kg, other ${fmt(ot)} kg"><i style="width:${pc(mu)}%;background:var(--ok)"></i><i style="width:${pc(fa)}%;background:var(--accent)"></i><i style="width:${pc(ot)}%;background:var(--line)"></i></div>
+   <div class="mk-l"><span><b style="background:var(--ok)"></b>Skeletal muscle ${fmt(mu)} kg (${Math.round(mu/w*100)}%)</span><span><b style="background:var(--accent)"></b>Fat ${fmt(fa)} kg (${Math.round(fa/w*100)}%)</span><span><b style="background:var(--line)"></b>Everything else ${fmt(ot)} kg</span></div></div>`;
+}
+function caviScale(s){
+  const vals=s.metrics.filter(m=>/^cavi/i.test(m.label)&&isFinite(parseFloat(m.value))).map(m=>({n:/left/i.test(m.label)?'L':/right/i.test(m.label)?'R':'',v:parseFloat(m.value)}));
+  if(!vals.length)return '';
+  const a=5,b=12,P=x=>Math.max(1,Math.min(99,(x-a)/(b-a)*100));
+  return `<div class="makeup"><div class="mk-t">CAVI scale (typical device cutoffs)</div><div class="cscale"><i style="width:${P(8)}%;background:var(--ok)"></i><i style="width:${P(9)-P(8)}%;background:#E3C168"></i><i style="width:${100-P(9)}%;background:var(--high)"></i>${vals.map(x=>`<em style="left:${P(x.v)}%" title="${x.n} ${x.v}"><span>${x.n}</span></em>`).join('')}</div>
+   <div class="mk-l" style="justify-content:space-between"><span>Under 8.0 normal</span><span>8.0 to 9.0 borderline</span><span>Over 9.0 higher</span></div></div>`;
+}
+
+/* ---------- charts ---------- */
+function chart(s,big){
+  const pts=s.points,W=big?640:240,H=big?240:60;
+  const L=big?46:6,R=8,T=8,B=big?26:8;
+  const vals=pts.map(p=>sv(s,p.value));
+  const last=pts[pts.length-1];const lo=sv(s,effRange(last).low),hi=sv(s,effRange(last).high);
+  const dom=[...vals];if(lo!=null)dom.push(lo);if(hi!=null)dom.push(hi);
+  let mn=Math.min(...dom),mx=Math.max(...dom);if(mn===mx){mn-=1;mx+=1}
+  const pad=(mx-mn)*.15;mn-=pad;mx+=pad;
+  const Y=v=>T+(H-T-B)*(1-(v-mn)/(mx-mn));
+  const t=pts.map(p=>new Date(p.date+'T00:00:00').getTime());const t0=Math.min(...t),t1=Math.max(...t);
+  const X=i=>t1===t0?(L+(W-R))/2:L+(W-L-R)*(t[i]-t0)/(t1-t0);
+  const Xt=ms=>t1===t0?(L+(W-R))/2:L+(W-L-R)*(ms-t0)/(t1-t0);
+  let out=`<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(s.label)} history">`;
+  if(big){for(let i=0;i<4;i++){const v=mn+(mx-mn)*i/3;out+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L-6}" y="${Y(v)+3}" text-anchor="end">${fmt(v)}</text>`}}
+  if(lo!=null||hi!=null){const y1=hi!=null?Y(hi):T,y2=lo!=null?Y(lo):H-B;out+=`<rect class="band" x="${L}" y="${Math.min(y1,y2)}" width="${W-L-R}" height="${Math.abs(y2-y1)}"/>`}
+  if(big)chartNotes(s).forEach((n,i)=>{const x=Xt(new Date(n.date+'T00:00:00').getTime()).toFixed(1);out+=`<line class="note" x1="${x}" x2="${x}" y1="${T}" y2="${H-B}"/><circle class="notec" cx="${x}" cy="${T+2}" r="7"/><text class="notet" x="${x}" y="${T+5}" text-anchor="middle">${i+1}</text>`});
+  if(pts.length>1)out+=`<polyline class="line" points="${pts.map((p,i)=>X(i).toFixed(1)+','+Y(vals[i]).toFixed(1)).join(' ')}"/>`;
+  pts.forEach((p,i)=>{const last=i===pts.length-1;out+=`<circle class="${last?'end':'dot'}" cx="${X(i).toFixed(1)}" cy="${Y(vals[i]).toFixed(1)}" r="${last?(big?5:4):(big?4:2.5)}"><title>${esc(dLong(p.date))}: ${fmt(vals[i])} ${esc(su(s))}</title></circle>`});
+  if(big){out+=`<text x="${L}" y="${H-6}" text-anchor="start">${esc(dShort(pts[0].date))}</text>`;if(pts.length>1)out+=`<text x="${W-R}" y="${H-6}" text-anchor="end">${esc(dShort(pts[pts.length-1].date))}</text>`}
+  return out+'</svg>';
+}
+
+/* ---------- views ---------- */
+function sevScore(p){const st=status(p);if(st==='high'&&p.high)return (p.value-p.high)/Math.abs(p.high||1);if(st==='low'&&p.low)return (p.low-p.value)/Math.abs(p.low||1);return 0.01}
+const CHEV='<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+const landingHtml=()=>`<section class="landing"><h1 class="lh">Your lab results, finally in one place</h1><p class="ls">Upload a lab report as a PDF or photo. Labtrail reads the numbers, you check them, and every result is tracked over time. No account needed.</p>
+  <div class="actions" style="margin-top:18px"><button class="btn primary lg" data-act="tab" data-tab="add">Upload your report</button><button class="btn lg" data-act="seeexample">See an example first</button></div>
+  <p class="small muted" style="margin:14px 0 0">Been here before? <label class="linkbtn" style="cursor:pointer">Restore your backup file<input id="imp2" type="file" accept="application/json,.json" hidden></label></p>
+  <ol class="steps"><li><b>1</b>Upload a PDF or photo</li><li><b>2</b>Check the numbers it found</li><li><b>3</b>See trends and what is outside range</li></ol></section>`;
+const IG=()=>/Instagram|FBAN|FBAV/i.test((navigator&&navigator.userAgent)||'');
+function nudgeHtml(){
+  let h='';
+  if(IG())h+=`<div class="banner"><div class="grow"><strong>You are in Instagram's browser.</strong> Saved data can vanish when it closes. Tap the ⋯ menu and choose "Open in browser" first.</div></div>`;
+  const real=S.reports.length||S.scans.length||S.notes.length||Object.keys(S.vax).length;
+  if(real&&(S.rev||0)>(S.backupRev||0))h+=`<div class="banner"><div class="grow"><strong>Save a backup file.</strong> Your data lives only in this browser. Save the file to iCloud, Google Drive or email it to yourself. Restore it any time to pick up where you left off.</div><button class="btn primary sm" data-act="export">Save backup</button></div>`;
+  return h;
+}
+function renderDash(){
+  const series=buildSeries();
+  const stOf=s=>status(s.points[s.points.length-1]);
+  const attn=series.filter(s=>{const st=stOf(s);return st==='high'||st==='low'});
+  const latestDate=reportsNow().map(r=>r.date||'').sort().pop();
+  let h=nudgeHtml();
+  if(isDemo())h+=landingHtml()+`<div class="exlabel" id="example">Example dashboard · made-up numbers, not real data</div>`;
+  const cs={ok:0,out:attn.length,none:0};series.forEach(s=>{const st=stOf(s);if(st==='ok'||st==='above'||st==='below')cs.ok++;else if(st==='none')cs.none++});
+  const rated=cs.ok+cs.out;
+  h+=`<div class="hero">${ring([{n:cs.ok,c:'var(--ok)'},{n:cs.out,c:'var(--high)'},{n:cs.none,c:'var(--line)'}],84,`${cs.ok}/${rated||series.length}`,`${cs.ok} markers in range, ${cs.out} outside, ${cs.none} without a range`)}<div><p class="summary"><strong>${cs.ok} of ${rated}</strong> markers with a printed range are in range</p><p class="muted small" style="margin:2px 0 0">${reportsNow().length} report${reportsNow().length===1?'':'s'} · ${series.length} markers · latest ${esc(dLong(latestDate))}</p></div></div>`;
+  h+=priorityHtml(attn);
+  if(ui.note)h+=`<p class="small" style="margin:10px 0 0">${esc(ui.note)}</p>`;
+  const cats=CAT_ORDER.map(c=>({c,list:series.filter(s=>s.cat===c).sort((a,b)=>KNOWN.indexOf(a.entry)-KNOWN.indexOf(b.entry))})).filter(x=>x.list.length);
+  cats.forEach((x,i)=>{x.out=x.list.filter(s=>{const st=stOf(s);return st==='high'||st==='low'}).length;x.open=ui.printAll||(ui.cat[x.c]!==undefined?ui.cat[x.c]:(x.out>0||(!attn.length&&i===0)))});
+  const hasSI=series.some(s=>s.entry&&s.entry.si);
+  if(!isDemo()&&!S.sex)h+=`<div class="banner"><div class="grow"><strong>Are your results from a woman or a man?</strong> Hormones like testosterone are read differently. Pick one so flags fit you.</div><span class="seg"><button data-act="sex" data-v="f" aria-pressed="false">Female</button><button data-act="sex" data-v="m" aria-pressed="false">Male</button></span></div>`;
+  h+=`<div class="toolbar"><span class="seg" role="group" aria-label="View"><button data-act="view" data-v="list" aria-pressed="${ui.view==='list'}">List</button><button data-act="view" data-v="trends" aria-pressed="${ui.view==='trends'}">With trends</button></span>
+    ${isDemo()?'':`<span class="tb-actions"><button class="btn sm" data-act="export">Save backup</button><button class="btn sm" data-act="print">PDF</button><button class="btn sm" data-act="share">Share</button></span>`}
+    <button class="linkbtn" data-act="catall" data-o="${cats.every(x=>x.open)?0:1}">${cats.every(x=>x.open)?'Collapse all':'Expand all'}</button>
+    ${hasSI?`<span class="seg" role="group" aria-label="Units" style="margin-left:auto"><button data-act="units" data-u="us" aria-pressed="${S.units!=='si'}">mg/dL</button><button data-act="units" data-u="si" aria-pressed="${S.units==='si'}">mmol/L</button></span>`:''}</div>`;
+  for(const x of cats){
+    h+=`<section class="acc-s"><button class="acc" data-act="cat" data-c="${x.c}" data-open="${x.open?1:0}" aria-expanded="${x.open}">${ico(x.c)}<span class="an">${CATS[x.c]}</span><span class="am">${x.list.length} marker${x.list.length>1?'s':''}${x.out?` · <b class="outc">${x.out} outside range</b>`:''}</span>${CHEV}</button>`;
+    if(x.open){
+      if(ui.view==='trends'){
+        h+=`<div class="grid">`;
+        for(const s of x.list){
+          const p=s.points[s.points.length-1],prev=s.points[s.points.length-2],st=status(p);
+          const delta=prev?`${sv(s,p.value)-sv(s,prev.value)>0?'▲':'▼'} ${fmt(Math.abs(sv(s,p.value)-sv(s,prev.value)))} since ${esc(dShort(prev.date))}`:'1 reading. Add another report to see a trend.';
+          h+=`<button class="card" data-act="detail" data-key="${esc(s.key)}"><div class="name"><span>${esc(s.label)}</span><span class="pill ${st}">${SLAB[st]}</span></div><div class="val">${fmt(sv(s,p.value))}<small>${esc(su(s))}</small></div>${chart(s,false)}<div class="meta">${delta}</div></button>`;
+        }
+        h+='</div>';
+      }else{
+        h+=`<div class="mlist">`;
+        for(const s of x.list){
+          const p=s.points[s.points.length-1],prev=s.points[s.points.length-2],st=status(p);
+          let d='';if(prev){const z=sv(s,p.value)-sv(s,prev.value);d=z===0?'■ no change':`${z>0?'▲':'▼'} ${fmt(Math.abs(z))} since ${esc(dShort(prev.date))}`}
+          h+=`<button class="mrow" data-act="detail" data-key="${esc(s.key)}"><span class="mn">${esc(s.label)}</span><span class="mv">${fmt(sv(s,p.value))}<small>${esc(su(s))}</small></span><span class="md">${d}</span><span class="pill ${st}">${SLAB[st]}</span></button>`;
+        }
+        h+='</div>';
+      }
+    }
+    h+='</section>';
+  }
+  return h;
+}
+function priorityHtml(attn){
+  if(!attn.length)return `<section class="alert ok" aria-label="Priority items"><div class="alert-t">Every result with a printed range is inside it</div></section>`;
+  const sorted=[...attn].sort((a,b)=>sevScore(b.points[b.points.length-1])-sevScore(a.points[a.points.length-1]));
+  const shown=ui.allPrio?sorted:sorted.slice(0,5);
+  return `<section class="alert" aria-label="Priority items"><div class="alert-t">Worth a look (${attn.length})</div><p class="alert-s">Outside the range printed on the report, furthest out first. This is often not a problem on its own, and only the direction that matters for each marker is listed here. Tap one to open it.</p><div class="alert-l">`+shown.map(s=>{
+    const p=s.points[s.points.length-1],prev=s.points[s.points.length-2],st=status(p);let d='';
+    if(prev){const x=sv(s,p.value)-sv(s,prev.value);d=` · ${x>0?'▲':x<0?'▼':'■'} ${fmt(Math.abs(x))} since ${dShort(prev.date)}`}
+    return `<button class="alert-i" data-act="detail" data-key="${esc(s.key)}"><span class="pill ${st}">${SLAB[st]}</span><span><strong>${esc(s.label)}</strong> <span class="mono">${fmt(sv(s,p.value))} ${esc(su(s))}</span><span class="muted small">${d}</span></span></button>`}).join('')+`</div>${attn.length>5?`<button class="linkbtn" style="margin-top:8px" data-act="allprio">${ui.allPrio?'Show fewer':`Show all ${attn.length}`}</button>`:''}</section>`;
+}
+function renderNotes(){
+  const list=[...notesNow()].sort((a,b)=>b.date.localeCompare(a.date));
+  const real=S.notes.length>0,today=new Date().toISOString().slice(0,10);
+  return `<div class="panel"><h2>Notes</h2><p class="muted small" style="margin-top:0">Log changes in diet, medication, training, travel or stress. Each note shows on the charts of your markers, so you can see what changed around that date.</p>
+  ${!real&&isDemo()?'<div class="banner">These are example notes. Add your own and they are replaced.</div>':''}
+  <div class="fields"><label class="f">Date<input id="n-date" type="date" value="${today}"></label><label class="f">What changed<input id="n-text" type="text" maxlength="140" placeholder="e.g. Started oatmeal every morning"></label></div>
+  ${ui.msg?`<div class="err">${esc(ui.msg)}</div>`:''}
+  <div class="actions" style="margin-top:12px"><button class="btn primary" data-act="addnote">Add note</button></div></div>
+  <div class="panel"><h2>Timeline</h2>${list.length?list.map(n=>{const c=ui.confirmDel===n.id;return `<div class="rep"><div><strong>${esc(dLong(n.date))}</strong> <span>${esc(n.text)}</span></div>${real?`<button class="btn sm ${c?'danger':''}" data-act="${c?'delnote':'asknote'}" data-id="${esc(n.id)}">${c?'Confirm delete':'Delete'}</button>`:''}</div>`}).join(''):'<p class="muted">No notes yet.</p>'}</div>`;
+}
+function chartNotes(s){
+  const a=s.points[0].date,b=s.points[s.points.length-1].date;
+  return notesNow().filter(n=>n.date>=a&&n.date<=b).sort((x,y)=>x.date.localeCompare(y.date));
+}
+/* ---------- history timeline ---------- */
+const GSENS='Sexual health';
+const GROUPS=['Infectious disease','Sexual health','Urine','Other'];
+const TODAY=()=>new Date().toISOString().slice(0,10);
+const mdisp=m=>{const e=BYKEY[m.key];if(S.units==='si'&&e&&e.si&&m.unit===e.b)return {v:m.value/e.si.f,u:e.si.u};return {v:m.value,u:m.unit}};
+const FSTAT=f=>f==='abnormal'?'high':f==='normal'?'ok':'none';
+function tile(label,val,st,sub,extra){return `<div class="tile"><div class="l">${esc(label)}</div><div class="v s-${st}">${val}</div>${extra||''}${sub?`<div class="sub">${sub}</div>`:''}</div>`}
+const demoBanner=t=>`<div class="banner"><div class="grow"><strong>Example data.</strong> ${t}</div></div>`;
+function renderHistory(){
+  const reps=[...reportsNow()].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const hasSens=reps.some(r=>(r.findings||[]).some(f=>f.group===GSENS));
+  let h=`<div class="pagehead"><div><h2 class="pt">Bloodwork history</h2><p class="muted" style="margin:0">Every report, newest first. Tap a date to open it.</p></div>${hasSens?`<button class="btn sm" data-act="togglesens">${S.hideSens?'Show sexual health results':'Hide sexual health results'}</button>`:''}</div>`;
+  if(isDemo())h+=demoBanner('These reports are made up. Add a report and they are replaced.');
+  h+=`<div class="tl">`;
+  reps.forEach((r,idx)=>{
+    const fs=r.findings||[];
+    const outM=r.markers.filter(m=>{const s=status(withTarget(m));return s==='high'||s==='low'});
+    const bad=outM.length>0||fs.some(f=>f.flag==='abnormal');
+    const open=ui.rep[r.id]!==undefined?ui.rep[r.id]:idx===0;
+    const total=r.markers.length+fs.length;
+    h+=`<div class="tle"><span class="tdot ${bad?'amber':'green'}" aria-hidden="true"></span><button class="thead" data-act="rep" data-id="${esc(r.id)}" data-open="${open?1:0}" aria-expanded="${open}"><span><span class="tld">${esc(dLong(r.date))}</span><span class="tlt">${esc(r.lab||'Unknown lab')}</span><span class="muted small">${total} results${outM.length?` · <b class="outc">${outM.length} outside range</b>`:' · all in range'}</span></span>${CHEV}</button>`;
+    if(open){
+      h+=`<div class="tiles">`
+       +r.markers.map(m=>{const st=status(withTarget(m)),d=mdisp(m);return tile(m.label,`${fmt(d.v)} <small>${esc(d.u)}</small>`,st,st==='high'||st==='low'?SLAB[st]:'')}).join('')
+       +fs.map(f=>{const hide=S.hideSens&&f.group===GSENS;return tile(f.name,hide?'<span class="muted">Hidden</span>':esc(f.result),hide?'none':FSTAT(f.flag),!hide&&f.flag==='abnormal'?'▲ Flagged by lab':'')}).join('')
+       +`</div>`;
+    }
+    h+=`</div>`;
+  });
+  return h+'</div>';
+}
+
+/* ---------- scans and tests ---------- */
+const STYPES={
+ inbody:{t:'InBody body composition',rows:[['Weight','kg'],['Skeletal muscle mass','kg'],['Body fat mass','kg'],['Body fat','%'],['BMI','kg/m²'],['Visceral fat level',''],['BMR','kcal/day'],['Waist','cm']]},
+ cavi:{t:'Arterial stiffness (CAVI / ABI)',rows:[['CAVI right',''],['CAVI left',''],['ABI right',''],['ABI left','']]},
+ cac:{t:'Heart scan (calcium score)',rows:[['CAC score','']]},
+ stress:{t:'Exercise stress test',rows:[['Max heart rate','bpm'],['Exercise capacity','METs'],['Result','']]},
+ bp:{t:'Blood pressure',rows:[['Systolic','mmHg'],['Diastolic','mmHg'],['Resting heart rate','bpm']]},
+ other:{t:'Other test',rows:[['','']]}};
+const stype=k=>STYPES[k]||STYPES.other;
+const newScan=type=>({type,title:'',date:'',lab:'',note:'',rows:stype(type).rows.map(([label,unit])=>({label,value:'',unit,ref:'',st:'none'}))});
+const DEMO_SCANS=[
+ {id:'ds1',type:'inbody',date:'2025-11-01',lab:'Example Gym',note:'',metrics:[{label:'Weight',value:'72.4',unit:'kg',ref:'',st:'none'},{label:'Skeletal muscle mass',value:'33.1',unit:'kg',ref:'',st:'none'},{label:'Body fat mass',value:'11.7',unit:'kg',ref:'',st:'none'},{label:'Body fat',value:'16.2',unit:'%',ref:'10–20',st:'ok'},{label:'BMI',value:'23.6',unit:'kg/m²',ref:'18.5–24.9',st:'ok'},{label:'Visceral fat level',value:'4',unit:'',ref:'1–9',st:'ok'},{label:'BMR',value:'1690',unit:'kcal/day',ref:'',st:'none'}]},
+ {id:'ds2',type:'inbody',date:'2025-05-10',lab:'Example Gym',note:'',metrics:[{label:'Weight',value:'74.0',unit:'kg',ref:'',st:'none'},{label:'Skeletal muscle mass',value:'32.6',unit:'kg',ref:'',st:'none'},{label:'Body fat mass',value:'13.4',unit:'kg',ref:'',st:'none'},{label:'Body fat',value:'18.1',unit:'%',ref:'10–20',st:'ok'},{label:'BMI',value:'24.1',unit:'kg/m²',ref:'18.5–24.9',st:'ok'},{label:'Visceral fat level',value:'5',unit:'',ref:'1–9',st:'ok'},{label:'BMR',value:'1675',unit:'kcal/day',ref:'',st:'none'}]},
+ {id:'ds3',type:'cavi',date:'2025-07-27',lab:'Example Clinic',note:'Ask about repeating this in a year.',metrics:[{label:'CAVI right',value:'8.4',unit:'',ref:'below 8.0',st:'out'},{label:'CAVI left',value:'8.2',unit:'',ref:'below 8.0',st:'out'},{label:'ABI right',value:'1.18',unit:'',ref:'0.91–1.40',st:'ok'},{label:'ABI left',value:'1.16',unit:'',ref:'0.91–1.40',st:'ok'}]}];
+const scansNow=()=>S.scans.length?S.scans:(isDemo()?DEMO_SCANS:[]);
+function scanStatus(s){const m=s.metrics;if(m.some(x=>x.st==='out'))return ['high','▲ Some results outside range'];if(m.some(x=>x.st==='ok'))return ['ok','● Results in range'];return null}
+function renderScans(){
+  const list=[...scansNow()].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const real=S.scans.length>0;
+  let h=`<div class="pagehead"><div><h2 class="pt">Scans and tests</h2><p class="muted" style="margin:0">Body composition, artery and heart tests, anything that comes as a printout</p></div>${ui.scanForm?'':'<button class="btn primary" data-act="scanform">Add a scan</button>'}</div>`;
+  if(ui.scanForm)h+=scanFormHtml();
+  if(!real&&isDemo()&&!ui.scanForm)h+=demoBanner('These scans are made up. Add your own and they are replaced.');
+  for(const s of list){
+    const prev=list.find(p=>p.type===s.type&&p.date<s.date),st=scanStatus(s),c=ui.confirmDel===s.id;
+    h+=`<section class="panel scan"><div class="sh"><div><h3 class="st">${ico(STYPES[s.type]?s.type:'report',20)}${esc(s.title||stype(s.type).t)}</h3><div class="muted small">${esc(dLong(s.date))}${s.lab?' · '+esc(s.lab):''}</div></div>${st?`<span class="pill ${st[0]}">${st[1]}</span>`:''}</div><div class="tiles">`
+     +s.metrics.map(m=>{
+        const pm=prev&&prev.metrics.find(x=>x.label.toLowerCase()===m.label.toLowerCase());
+        let sub=m.ref?'Reference '+esc(m.ref):'';
+        const a=parseFloat(m.value),b=pm?parseFloat(pm.value):NaN;
+        if(isFinite(a)&&isFinite(b)&&a!==b)sub+=(sub?'<br>':'')+`${a>b?'▲':'▼'} ${fmt(Math.abs(a-b))} vs ${esc(dShort(prev.date))}`;
+        const hist=list.filter(p=>p.type===s.type&&p.date<=s.date).sort((x,y)=>x.date.localeCompare(y.date)).map(p=>{const q=p.metrics.find(x=>x.label.toLowerCase()===m.label.toLowerCase());return q?parseFloat(q.value):NaN}).filter(isFinite);
+        const rg=parseRef(m.ref),stt=m.st==='out'?'high':m.st==='ok'?'ok':'none';
+        const ex=miniSpark(hist);
+        return tile(m.label,`${esc(m.value)} <small>${esc(m.unit)}</small>`,stt,sub,ex)}).join('')
+     +`</div>`+bodyMakeup(s)+caviScale(s)+(s.note?`<div class="insight"><strong>Your note:</strong> ${esc(s.note)}</div>`:'')
+     +(real?`<div class="actions"><button class="btn sm ${c?'danger':''}" data-act="${c?'scandel':'scanask'}" data-id="${esc(s.id)}">${c?'Confirm delete':'Delete'}</button></div>`:'')+`</section>`;
+  }
+  if(!list.length&&!ui.scanForm)h+=`<div class="panel"><p class="muted" style="margin:0">No scans yet.</p></div>`;
+  return h;
+}
+function scanFormHtml(){
+  const s=ui.scan;
+  const rows=s.rows.map((r,i)=>`<div class="srow"><input type="text" data-sr="${i}" data-f="label" value="${esc(r.label)}" placeholder="Name" aria-label="Name"><input type="text" data-sr="${i}" data-f="value" value="${esc(r.value)}" placeholder="Value" aria-label="Value"><input type="text" data-sr="${i}" data-f="unit" value="${esc(r.unit)}" placeholder="Unit" aria-label="Unit"><input type="text" data-sr="${i}" data-f="ref" value="${esc(r.ref)}" placeholder="Reference (optional)" aria-label="Printed reference"><select data-sr="${i}" data-f="st" aria-label="Status"><option value="none" ${r.st==='none'?'selected':''}>No status</option><option value="ok" ${r.st==='ok'?'selected':''}>In range</option><option value="out" ${r.st==='out'?'selected':''}>Outside range</option></select><button class="btn sm" data-act="scanrm" data-i="${i}" aria-label="Remove row">✕</button></div>`).join('');
+  return `<div class="panel"><h2>Add a scan or test</h2>
+   <p class="muted" style="margin-top:0">Type the numbers from your printout, or let Claude read a photo of it. Set a status only if the printout marks the result.</p>
+   ${ui.scanBusy?`<p><span class="spin"></span>${esc(ui.progress)}</p><div class="actions"><button class="btn" data-act="stop">Stop</button></div>`:`
+   ${consentHtml()}<div class="actions" style="margin:8px 0 4px"><label class="btn ${sampleFn?'':'off'}" style="cursor:pointer">Read from a photo or PDF<input id="sfile" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" ${sampleFn?'':'disabled'} hidden></label></div>
+   <div class="fields"><label class="f">Type<select data-sf="type">${Object.entries(STYPES).map(([k,v])=>`<option value="${k}" ${s.type===k?'selected':''}>${esc(v.t)}</option>`).join('')}</select></label>
+   ${s.type==='other'?`<label class="f">Name of the test<input type="text" data-sf="title" value="${esc(s.title)}" placeholder="e.g. Bone density"></label>`:''}
+   <label class="f">Date<input type="date" data-sf="date" value="${esc(s.date)}"></label>
+   <label class="f">Place<input type="text" data-sf="lab" value="${esc(s.lab)}" placeholder="e.g. City Hospital"></label></div>
+   ${rows}
+   <div class="actions" style="margin-top:10px"><button class="btn sm" data-act="scanrow">+ Add a row</button></div>
+   <div class="fields"><label class="f">Your note (optional)<input type="text" data-sf="note" maxlength="300" value="${esc(s.note)}" placeholder="Anything you want to remember about this result"></label></div>
+   ${ui.msg?`<div class="err">${esc(ui.msg)}</div>`:''}
+   <div class="actions"><button class="btn primary" data-act="scansave">Save scan</button><button class="btn" data-act="scancancel">Cancel</button></div>`}</div>`;
+}
+function saveScan(){
+  const s=ui.scan;
+  const metrics=s.rows.filter(r=>r.label.trim()&&String(r.value).trim()).map(r=>({label:r.label.trim(),value:String(r.value).trim(),unit:r.unit.trim(),ref:r.ref.trim(),st:r.st}));
+  if(!s.date){ui.msg='Enter the date of the scan.';render();return}
+  if(!metrics.length){ui.msg='Add at least one result with a name and a value.';render();return}
+  S.scans.push({id:'s'+Date.now().toString(36),type:s.type,title:s.type==='other'?s.title.trim():'',date:s.date,lab:s.lab.trim(),note:s.note.trim(),metrics,addedAt:Date.now()});
+  save();ui.scanForm=false;ui.scan=null;ui.msg='';render();
+}
+const SCANPROMPT=n=>`You are reading ${n} image${n>1?'s':''} of a medical or body scan result, such as an InBody body composition printout, a CAVI/ABI arterial stiffness report, a heart calcium score, a stress test or a blood pressure reading.
+Reply with only JSON in this shape:
+{"type": "inbody" or "cavi" or "cac" or "stress" or "bp" or "other", "title": string or null, "date": "YYYY-MM-DD" or null, "lab": string or null, "metrics": [{"label": string, "value": string, "unit": string, "ref": string or null, "flag": "ok" or "out" or null}]}
+Rules:
+- "date" is the test date. Thai reports may use Buddhist years (2568 = 2025): convert to the Gregorian year. Dates like 27/07/2025 are day/month/year.
+- "lab" is the clinic, gym or hospital name. "title" is only needed when type is "other".
+- Include each measured result once. "value" is the number or short result as printed. "unit" is as printed, or an empty string.
+- "ref" is the normal or reference range printed next to the result, copied as text, or null.
+- "flag" is "out" only if the report marks the result as abnormal, high, low or needing attention. "ok" only if it marks it normal. Otherwise null.
+- Do NOT include the person's name, ID, date of birth, phone, address or any other personal details. Skip advice text and free-text comments.`;
+function normDate(date){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return null;
+  let [y,mo,da]=date.split('-').map(Number);if(y>2400)y-=543;
+  return `${y}-${String(mo).padStart(2,'0')}-${String(da).padStart(2,'0')}`;
+}
+async function readScanFiles(list){
+  const files=[...list];if(!files.length)return;
+  if(needConsent()){ui.msg='Tick the box to confirm before reading a file.';render();return}
+  ui.scanBusy=true;ui.msg='';ui.ctl=new AbortController();ui.progress='Preparing your file…';render();
+  try{
+    const imgs=await toImages(files);
+    if(!imgs.length)throw {code:'empty'};
+    const lim=await sampleFn.limits().catch(()=>({}));
+    if(!lim.images)throw {code:'images_unavailable'};
+    const batch=imgs.slice(0,Math.max(1,Math.min(lim.images.maxCount||3,3)));
+    ui.progress='Claude is reading your scan. This takes up to a minute.';render();
+    const res=await sampleFn.json(SCANPROMPT(batch.length),{images:batch,signal:ui.ctl.signal});
+    if(!res||!Array.isArray(res.metrics))throw {code:'invalid_json'};
+    const type=STYPES[res.type]?res.type:'other';
+    const rows=res.metrics.filter(m=>m&&m.label&&m.value!=null&&String(m.value)!=='').map(m=>({label:String(m.label),value:String(m.value),unit:String(m.unit||''),ref:m.ref?String(m.ref):'',st:m.flag==='out'?'out':m.flag==='ok'?'ok':'none'}));
+    ui.scan={type,title:res.title?String(res.title):'',date:normDate(res.date)||ui.scan.date||'',lab:res.lab?String(res.lab):(ui.scan.lab||''),note:ui.scan.note||'',rows:rows.length?rows:newScan(type).rows};
+    if(!rows.length)ui.msg='No results were found in that file. You can type them in below.';
+  }catch(e){ui.msg=errMsg(e&&e.code)}
+  ui.scanBusy=false;ui.ctl=null;render();
+}
+
+/* ---------- vaccines ---------- */
+const VAX=[['covid','COVID-19','Common'],['flu','Influenza (flu)','Common'],['tdap','Tetanus, diphtheria, whooping cough (Td / Tdap)','Common'],['mmr','Measles, mumps, rubella (MMR)','Common'],['varicella','Chickenpox (varicella)','Common'],['hpv','HPV','Common'],['hepb','Hepatitis B','Common'],['hepa','Hepatitis A','Common'],['pneumo','Pneumococcal','Common'],['zoster','Shingles','Common'],['mening','Meningococcal','Common'],['rsv','RSV','Common'],['polio','Polio','Common'],['typhoid','Typhoid','Travel'],['rabies','Rabies','Travel'],['je','Japanese encephalitis','Travel'],['yf','Yellow fever','Travel'],['cholera','Cholera','Travel']];
+const vstate=k=>{const v=S.vax[k]||{};return (v.doses||[]).length?'taken':(v.not?'not':'none')};
+function renderVax(){
+  const all=[...VAX.map(([k,n,g])=>({k,n,g})),...S.vaxCustom.map(c=>({k:c.k,n:c.n,g:'Your own'}))];
+  const cnt={taken:0,not:0,none:0};all.forEach(v=>cnt[vstate(v.k)]++);
+  const today=TODAY();
+  let h=`<div class="pagehead"><div><h2 class="pt">Vaccines</h2><p class="muted" style="margin:0">What you have had and what you haven't</p></div></div>
+   <div class="vsum">${ring([{n:cnt.taken,c:'var(--ok)'},{n:cnt.not,c:'var(--accent)'},{n:cnt.none,c:'var(--line)'}],84,`${cnt.taken}/${all.length}`,`${cnt.taken} of ${all.length} vaccines taken`)}<div><p class="summary" style="margin:0"><strong>${cnt.taken}</strong> taken · <strong>${cnt.not}</strong> marked not taken · ${cnt.none} not recorded</p><div class="rleg"><span><b style="background:var(--ok)"></b>Taken</span><span><b style="background:var(--accent)"></b>Not taken</span><span><b style="background:var(--line)"></b>Not recorded</span></div></div></div>
+   <p class="small muted" style="max-width:62ch;margin-top:0">Tap a vaccine to log a dose or mark it as not taken. Which ones you need depends on your age, health and travel plans, so ask a doctor or travel clinic.</p>`;
+  for(const g of ['Common','Travel','Your own']){
+    const list=all.filter(v=>v.g===g);if(!list.length)continue;
+    const gopen=ui.vg[g]!==undefined?ui.vg[g]:(g==='Common'||list.some(v=>vstate(v.k)!=='none'||ui.vopen===v.k));
+    const gt=list.filter(v=>vstate(v.k)==='taken').length;
+    h+=`<section class="acc-s"><button class="acc" data-act="vgrp" data-g="${g}" data-open="${gopen?1:0}" aria-expanded="${gopen}"><span class="an">${g==='Common'?'Routine and common':g==='Travel'?'Travel':'Added by you'}</span><span class="am">${gt} of ${list.length} taken</span>${CHEV}</button>`;
+    if(!gopen){h+='</section>';continue}
+    h+=`<div class="vlist">`;
+    for(const v of list){
+      const vs=S.vax[v.k]||{},doses=[...(vs.doses||[])].sort((a,b)=>a.date.localeCompare(b.date)),stt=vstate(v.k),open=ui.vopen===v.k;
+      const last=doses[doses.length-1],due=doses.map(d=>d.due).filter(Boolean).sort().pop(),overdue=due&&due<today;
+      const pill=overdue?'<span class="pill high">▲ Booster overdue</span>':stt==='taken'?'<span class="pill ok">● Taken</span>':stt==='not'?'<span class="pill warn">Not taken</span>':'<span class="pill none">Not recorded</span>';
+      const sub=stt==='taken'?`${doses.length} dose${doses.length>1?'s':''} · last ${esc(dLong(last.date))}${due?` · booster due ${esc(dShort(due))}`:''}`:'';
+      h+=`<div class="vrow"><button class="vhead" data-act="vopen" data-k="${esc(v.k)}" aria-expanded="${open}"><span style="display:flex;align-items:center">${ico('vax',18)}<span><strong>${esc(v.n)}</strong>${sub?`<span class="muted small" style="display:block">${sub}</span>`:''}</span></span>${pill}</button>`;
+      if(open){
+        h+=`<div class="vbody">${doses.length?`<ul class="nlist" style="margin:0 0 10px">${doses.map(d=>`<li style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span>${esc(dLong(d.date))}${d.note?' · '+esc(d.note):''}${d.due?` · booster due ${esc(dShort(d.due))}`:''}</span><button class="btn sm" data-act="deldose" data-k="${esc(v.k)}" data-id="${esc(d.id)}">Remove</button></li>`).join('')}</ul>`:''}
+         <div class="fields" style="margin-top:0"><label class="f">Date of dose<input type="date" id="vd-${esc(v.k)}" value="${today}"></label><label class="f">Note (optional)<input type="text" id="vn-${esc(v.k)}" maxlength="80" placeholder="e.g. Booster, brand, clinic"></label><label class="f">Booster due (optional)<input type="date" id="vb-${esc(v.k)}"></label></div>
+         ${ui.vmsg?`<div class="err">${esc(ui.vmsg)}</div>`:''}
+         <div class="actions" style="margin-top:0"><button class="btn primary sm" data-act="adddose" data-k="${esc(v.k)}">Add dose</button>${stt!=='taken'?`<button class="btn sm" data-act="vnot" data-k="${esc(v.k)}">${stt==='not'?'Clear "not taken"':'Mark as not taken'}</button>`:''}${g==='Your own'?`<button class="btn sm" data-act="vrm" data-k="${esc(v.k)}">Remove from list</button>`:''}</div></div>`;
+      }
+      h+='</div>';
+    }
+    h+='</div></section>';
+  }
+  h+=`<div class="panel"><h2>Add another vaccine</h2><div class="fields" style="margin-bottom:0"><label class="f">Name<input type="text" id="vcustom" maxlength="60" placeholder="e.g. Mpox"></label></div><div class="actions"><button class="btn" data-act="addvax">Add to list</button></div></div>`;
+  return h;
+}
+
+function summaryText(){
+  const series=buildSeries();const latest=reportsNow().map(r=>r.date||'').sort().pop();
+  const out=[`Labtrail summary, latest report ${dLong(latest)}`,'Ranges are the ones printed on each lab report. This is not medical advice.',''];
+  for(const s of series){const p=s.points[s.points.length-1],st=status(p);out.push(`${s.label}: ${fmt(sv(s,p.value))} ${su(s)} (${SLAB[st].slice(2)}; range ${rangeText(s,p)})`)}
+  return out.join('\n');
+}
+async function shareSummary(){
+  const text=summaryText();
+  try{
+    if(navigator.share){await navigator.share({title:'My lab summary',text});ui.note='Summary shared.'}
+    else{await navigator.clipboard.writeText(text);ui.note='Summary copied. Paste it into a message or email.'}
+  }catch(e){ui.note=(e&&e.name==='AbortError')?'':'Could not share the summary.'}
+  render();
+}
+function printDash(){
+  ui.printAll=true;ui.tab='dash';render();
+  window.onafterprint=()=>{ui.printAll=false;render()};
+  setTimeout(()=>{try{window.print()}catch(e){ui.printAll=false;ui.note='Printing is not available in this view. Open Labtrail in your browser.';render()}},200);
+}
+const REMIX_PROMPT=`I'm attaching Labtrail, a single-file HTML health dashboard. Keep the code structure and every existing feature working. Please change it so that: [DESCRIBE WHAT YOU WANT, e.g. my own colors, extra markers I track, a different layout, my language]. Then publish the result as an artifact that only I can open.`;
+async function downloadApp(){
+  try{
+    let t=await (await fetch(location.href.split('#')[0])).text();
+    t=t.replace(/<script>window\.LABTRAIL_API[\s\S]*?<\/script>\s*/,'').replace(/<script>window\.va=[\s\S]*?<\/script>\s*/,'').replace(/<script defer src="\/_vercel\/insights\/script\.js"><\/script>\s*/,'');
+    if(t.length<20000)throw 0;
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/html'}));a.download='labtrail-app.html';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    ui.note='App file downloaded. Attach it in Claude with the prompt you copied.';
+  }catch(e){ui.note='The app file could not be downloaded from this view. Open Labtrail in your browser and try again.'}
+  render();
+}
+async function copyRemix(){try{await navigator.clipboard.writeText(REMIX_PROMPT);ui.note='Prompt copied.'}catch(e){ui.note='Could not copy. Select the prompt text and copy it.'}render()}
+const sexHtml=()=>`<div class="panel"><h2>About you</h2><p class="muted small" style="margin-top:0">Some markers mean different things in men and women, testosterone most of all. This only changes how results are flagged, and stays in this browser.</p><span class="seg" role="group" aria-label="Sex"><button data-act="sex" data-v="f" aria-pressed="${S.sex==='f'}">Female</button><button data-act="sex" data-v="m" aria-pressed="${S.sex==='m'}">Male</button></span></div>`;
+function renderMore(){
+  const real=!isDemo();
+  return sexHtml()+`<div class="panel"><h2>Save, print and share</h2><p class="muted small" style="margin-top:0">Your data stays on this device. These buttons get a copy out.</p>
+   <div class="actions" style="margin-top:8px"><button class="btn primary" data-act="export" ${real?'':'disabled'}>Save backup file</button><button class="btn" data-act="print" ${real?'':'disabled'}>Save dashboard as PDF</button><button class="btn" data-act="share" ${real?'':'disabled'}>Share a text summary</button></div>
+   ${real?'':'<p class="small muted" style="margin-bottom:0">Add a report first, then these turn on.</p>'}
+   ${ui.note?`<p class="small" style="margin-bottom:0">${esc(ui.note)}</p>`:''}</div>`
+   +renderNotes()+renderReports().replace(/<p class="small" style="margin-bottom:0">\$\{[^<]*<\/p>/,'')
+   +`<div class="panel"><h2>Make your own version</h2><p class="muted small" style="margin-top:0">Want different colors, extra markers or another layout? Download the app, attach it in Claude with the prompt below, and describe your changes. Claude publishes your own private copy. It runs on your own Claude, so nothing goes through Labtrail.</p>
+   <pre class="remix">${esc(REMIX_PROMPT)}</pre><div class="actions" style="margin-top:8px"><button class="btn" data-act="copyremix">Copy the prompt</button><button class="btn" data-act="dlapp">Download the app file</button></div></div>`;
+}
+function renderReports(){
+  let h=nudgeHtml()+`<div class="panel"><h2>Your reports</h2>`;
+  if(isDemo())h+=`<p class="muted">Nothing saved yet. Add a report to get started.</p>`;
+  for(const r of [...S.reports].sort((a,b)=>(b.date||'').localeCompare(a.date||''))){
+    const c=ui.confirmDel===r.id;
+    h+=`<div class="rep"><div><strong>${esc(dLong(r.date))}</strong> <span class="muted">· ${esc(r.lab||'Unknown lab')} · ${r.markers.length} markers${(r.findings||[]).length?' · '+r.findings.length+' other results':''}</span></div>
+      <button class="btn sm ${c?'danger':''}" data-act="${c?'delrep':'askdel'}" data-id="${esc(r.id)}">${c?'Confirm delete':'Delete'}</button></div>`;
+  }
+  h+=`</div><div class="panel"><h2>Your data</h2>
+    <p class="muted small" style="margin-top:0">Everything is saved in this browser on this device only. Nothing is kept on a server, so we cannot recover it for you. Save a backup file and keep it in iCloud, Google Drive or your email. To use Labtrail on another device, restore that file there.</p>
+    <div class="actions" style="margin-top:8px"><button class="btn" data-act="export">Back up to a file</button>
+    <label class="btn" style="cursor:pointer">Restore from backup<input id="imp" type="file" accept="application/json,.json" hidden></label>
+    <button class="btn ${ui.confirmAll?'danger':''}" data-act="${ui.confirmAll?'wipe':'askwipe'}">${ui.confirmAll?'Confirm: delete everything':'Delete all my data'}</button></div>
+    ${ui.note?`<p class="small" style="margin-bottom:0">${esc(ui.note)}</p>`:''}</div>`;
+  return h;
+}
+function renderAdd(){
+  let h='';
+  if(ui.step==='pick'){
+    h=`<div class="panel"><h2>Add a lab report</h2>
+    <p class="muted" style="margin-top:0">Upload a PDF, a photo or a screenshot. Labtrail reads the results, you check them, and they join your history.</p>
+    <label class="drop" id="drop"><input id="file" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" multiple hidden>
+      <strong>Choose files or drop them here</strong><span class="muted small">PDF, JPG, PNG or WebP · up to 12 pages in total</span></label>
+    ${ui.files.length?`<ul class="files">${ui.files.map((f,i)=>`<li><span>${esc(f.name)}</span><button class="btn sm" data-act="rmfile" data-i="${i}">Remove</button></li>`).join('')}</ul>`:''}
+    ${ui.msg?`<div class="err">${esc(ui.msg)}</div>`:''}
+    ${consentHtml()}
+    ${!sampleFn?`<div class="err">Reading reports needs this page to be opened while signed in to Claude. Open the link from your Claude account.</div>`:''}
+    <div class="actions"><button class="btn primary" data-act="read" ${ui.files.length&&sampleFn?'':'disabled'}>Read report</button></div>
+    <p class="small muted" style="margin-bottom:0">Your file is sent to Claude on your own Claude account to pull out the numbers, and your Claude usage covers it. Names and ID numbers on the report are not saved.</p></div>`;
+  }else if(ui.step==='reading'){
+    h=`<div class="panel"><h2>Reading your report</h2><p><span class="spin"></span>${esc(ui.progress)}</p><div class="actions"><button class="btn" data-act="stop">Stop</button></div></div>`;
+  }else{
+    const d=ui.draft;
+    h=`<div class="panel"><h2>Check the results</h2>
+    <p class="muted" style="margin-top:0">Compare each number with your report before saving. Fix anything that is wrong, and untick rows you don't want.</p>
+    <div class="fields"><label class="f">Report date<input id="d-date" type="date" value="${esc(d.date||'')}"></label>
+    <label class="f">Lab or hospital<input id="d-lab" type="text" value="${esc(d.lab||'')}" placeholder="e.g. City Hospital"></label></div>
+    ${d.rows.length?d.rows.map((r,i)=>rowHtml(r,i)).join(''):(d.finds.length?'':'<p class="err">No results were found. Try a clearer photo or a different page.</p>')}
+    ${d.finds.length?`<h3 class="cat" style="margin:20px 0 6px">Other results</h3>`+d.finds.map((f,i)=>`<div class="frow ${f.include?'':'off'}" id="frow-${i}"><input type="checkbox" data-find="${i}" data-f="include" ${f.include?'checked':''} aria-label="Include ${esc(f.name)}"><input type="text" data-find="${i}" data-f="name" value="${esc(f.name)}" aria-label="Test name"><input type="text" data-find="${i}" data-f="result" value="${esc(f.result)}" aria-label="Result"></div>`).join(''):''}
+    ${ui.msg?`<div class="err">${esc(ui.msg)}</div>`:''}
+    <div class="actions"><button class="btn primary" data-act="savedraft">Save ${d.rows.filter(r=>r.include).length+d.finds.filter(f=>f.include).length} results</button><button class="btn" data-act="discard">Discard</button></div></div>`;
+  }
+  return h;
+}
+function rowHtml(r,i){
+  const c=calc(r);
+  return `<div class="row ${r.include?'':'off'}" id="row-${i}">
+    <input type="checkbox" data-row="${i}" data-f="include" ${r.include?'checked':''} aria-label="Include ${esc(r.name)}">
+    <div class="sel"><select data-row="${i}" data-f="key" aria-label="Marker">${KNOWN.map(e=>`<option value="${e.k}" ${r.key===e.k?'selected':''}>${esc(e.n)}</option>`).join('')}<option value="other" ${r.key==='other'?'selected':''}>${esc(r.name)} (keep as printed)</option></select></div>
+    <input type="number" step="any" data-row="${i}" data-f="rawValue" value="${esc(r.rawValue)}" aria-label="Value">
+    <input type="text" data-row="${i}" data-f="rawUnit" value="${esc(r.rawUnit)}" aria-label="Unit">
+    <div class="calc ${c.warn?'warn':''}" id="calc-${i}">${calcText(r,c)}</div></div>`;
+}
+function calcText(r,c){
+  if(c.warn)return 'Unit not recognised. Check it.';
+  const st=isFinite(c.value)?status({key:r.key,value:c.value,low:c.low,high:c.high,flag:r.flag}):'none';
+  return (c.changed?`= ${fmt(c.value)} ${esc(c.unit)} · `:'')+(c.low!=null||c.high!=null?`range ${c.low!=null?fmt(c.low):''}${c.low!=null&&c.high!=null?'–':c.high!=null?'< ':''}${c.high!=null?fmt(c.high):''}`:'no range')+' · '+SLAB[st].slice(2);
+}
+function render(){
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===ui.tab?'page':'false'));
+  $('app').innerHTML=ui.tab==='dash'?renderDash():ui.tab==='history'?renderHistory():ui.tab==='scans'?renderScans():ui.tab==='vax'?renderVax():ui.tab==='more'?renderMore():ui.tab==='notes'?renderNotes():ui.tab==='reports'?renderReports():renderAdd();
+  const sf=$('sfile');if(sf)sf.onchange=()=>{readScanFiles(sf.files);sf.value=''};
+  const imp=$('imp');if(imp)imp.onchange=importFile;
+  const imp2=$('imp2');if(imp2)imp2.onchange=importFile;
+  const f=$('file');if(f)f.onchange=()=>addFiles(f.files);
+  const dr=$('drop');if(dr){['dragover','dragenter'].forEach(ev=>dr.addEventListener(ev,e=>{e.preventDefault();dr.classList.add('over')}));
+    ['dragleave','drop'].forEach(ev=>dr.addEventListener(ev,e=>{e.preventDefault();dr.classList.remove('over')}));dr.addEventListener('drop',e=>addFiles(e.dataTransfer.files))}
+}
+function $(id){return document.getElementById(id)}
+
+/* ---------- detail sheet ---------- */
+function openDetail(key){
+  const s=buildSeries().find(x=>x.key===key);if(!s)return;
+  const last=s.points[s.points.length-1];
+  $('sheet').innerHTML=`<div class="sheet-back" data-act="closesheet"><div class="sheet" role="dialog" aria-label="${esc(s.label)}">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div><h3>${esc(s.label)}</h3><div class="muted small">Range on latest report: ${esc(rangeText(s,last))} ${esc(su(s))}</div></div><button class="btn sm" data-act="closesheet">Close</button></div>
+    <p class="small" style="margin:10px 0 0;max-width:62ch;color:var(--ink2)">${esc(INFO[s.key]||'')}</p>
+    <p class="small muted" style="margin:6px 0 0;max-width:62ch">Flagged using the range printed on your ${esc(last.lab||'')} report.${meaning(s,last)} Ranges differ between labs, and being outside one is often not a problem on its own. Talk to your doctor about what it means for you.</p>
+    ${gauge(sv(s,last.value),sv(s,effRange(last).low),sv(s,effRange(last).high),status(last),true)}<div class="muted small">Your latest result against the green printed range</div>
+    <div style="margin:14px 0">${chart(s,true)}${chartNotes(s).length?`<ul class="nlist">${chartNotes(s).map((n,i)=>`<li><span><b>${i+1}</b>${esc(dLong(n.date))}: ${esc(n.text)}</span></li>`).join('')}</ul>`:''}</div>
+    <div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Result</th><th>Range</th><th>Status</th><th>Lab</th></tr></thead><tbody>
+    ${[...s.points].reverse().map(p=>{const st=status(p);return `<tr><td>${esc(dLong(p.date))}</td><td class="mono">${fmt(sv(s,p.value))} ${esc(su(s))}</td><td class="mono">${esc(rangeText(s,p))}</td><td><span class="pill ${st}">${SLAB[st]}</span></td><td>${esc(p.lab||'')}</td></tr>`}).join('')}
+    </tbody></table></div></div></div>`;
+  $('sheet').hidden=false;
+}
+const closeSheet=()=>{$('sheet').hidden=true;$('sheet').innerHTML=''};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+
+/* ---------- upload + extraction ---------- */
+const ERRS={not_granted:'Claude access was declined for this page, so reports cannot be read.',rate_limited:'Too many requests or your Claude usage limit was reached. Try again later.',
+      image_rejected:'One of the images could not be used. Try a different file.',images_unavailable:'This view cannot send images to Claude. Open the page in the Claude app or on claude.ai.',
+      invalid_json:'The results could not be read from that file. Try a clearer photo or one page at a time.',refused:'Claude could not read that file. Try a different one.',
+      nopdf:'The PDF reader did not load. Try a screenshot of the report instead.',empty:'No pages found in those files.',session_expired:'Sign in to Claude again, then retry.',need_code:'That access code is missing or not valid. Ask Tian for one.',network:'Could not reach the server. Check your connection and try again.',limit:'Labtrail has reached its free limit for today. Please try again tomorrow.',too_busy:'Too many people are using Labtrail right now. Try again in a few minutes.',failed:'Something went wrong while reading the file. Try again.'};
+const errMsg=c=>c==='cancelled'?'':(ERRS[c]||'Something went wrong while reading the file. Try again.');
+const MAX_PAGES=12;
+function addFiles(list){
+  ui.msg='';
+  for(const f of list){
+    const ok=/^(application\/pdf|image\/(png|jpeg|webp))$/.test(f.type)||/\.pdf$/i.test(f.name);
+    if(!ok){ui.msg=/heic|heif/i.test(f.type+f.name)?'iPhone HEIC photos are not supported. Take a screenshot of the report or share it as JPEG.':`"${f.name}" is not a PDF or image.`;continue}
+    ui.files.push(f);
+  }
+  render();
+}
+async function toImages(files){
+  const imgs=[];
+  for(const f of files){
+    if(/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)){
+      if(!window.pdfjsLib)throw {code:'nopdf'};
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const doc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+      for(let n=1;n<=doc.numPages&&imgs.length<MAX_PAGES;n++){
+        ui.progress=`Preparing page ${n} of ${f.name}…`;render();
+        const page=await doc.getPage(n);const w=page.getViewport({scale:1}).width;
+        const vp=page.getViewport({scale:Math.min(3,Math.max(1,1100/w))});
+        const cv=document.createElement('canvas');cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+        const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
+        await page.render({canvasContext:ctx,viewport:vp}).promise;
+        imgs.push(await new Promise(r=>cv.toBlob(r,'image/jpeg',.86)));
+      }
+    }else if(imgs.length<MAX_PAGES)imgs.push(f);
+  }
+  return imgs;
+}
+const KEYLIST=KNOWN.map(e=>`${e.k} (${e.n}, base unit ${e.b})`).join('; ');
+const promptFor=n=>`You are reading ${n} image${n>1?'s':''} of a medical lab report (blood test, checkup or similar). Extract every NUMERIC lab result.
+Reply with only JSON in this shape:
+{"lab": string or null, "date": "YYYY-MM-DD" or null, "markers": [{"key": string, "name": string, "value": number, "unit": string, "low": number or null, "high": number or null, "flag": "H" or "L" or null}], "findings": [{"name": string, "result": string, "flag": "abnormal" or "normal" or null, "group": "Infectious disease" or "Sexual health" or "Urine" or "Other"}]}
+Rules:
+- "date" is the collection or examination date. Thai reports may use Buddhist years (2568 = 2025): convert to the Gregorian year. Dates like 27/07/2025 are day/month/year.
+- "lab" is the lab or hospital name.
+- "name" is the test name exactly as printed. "unit" is the unit exactly as printed.
+- "key": use one of these keys when the test is clearly that marker, otherwise "other": ${KEYLIST}. Use "ldl" for LDL cholesterol whether direct or calculated. Use "glucose" only for fasting glucose. Use "testo" only for TOTAL testosterone: free testosterone is "ftesto", bioavailable testosterone is "btesto", and SHBG is "shbg".
+- "low"/"high" are the reference range printed on the report, as numbers in the printed unit. A range like "<5.20" is low null, high 5.2. A range like ">=1.00" or ">40" is low 1 (or 40), high null. Use null if no range is printed.
+- "flag" is "H" or "L" only if the report marks the result that way.
+- "markers" holds only numeric results. Results that are not a plain number go in "findings", for example Negative, Non-Reactive, Not Detected, Positive, Trace, or Reactive >1000. Copy the result text as printed. Skip long free-text comments, doctor's notes and diagnoses.
+- For findings: "flag" is "abnormal" only if the report marks that result as abnormal, otherwise "normal" only if the report marks it normal, otherwise null. "group": HIV, syphilis, chlamydia, gonorrhea, herpes, HPV and similar tests are "Sexual health"; hepatitis and other infection tests are "Infectious disease"; urinalysis is "Urine"; anything else is "Other".
+- Do NOT include the patient's name, ID, date of birth, phone, address or any other personal details.
+- If a result appears twice, include it once.`;
+async function readReport(){
+  if(needConsent()){ui.msg='Tick the box to confirm before reading a report.';render();return}
+  ui.step='reading';ui.msg='';ui.ctl=new AbortController();ui.progress='Preparing your files…';render();
+  try{
+    const imgs=await toImages(ui.files);
+    if(!imgs.length)throw {code:'empty'};
+    const lim=await sampleFn.limits().catch(()=>({}));
+    if(!lim.images)throw {code:'images_unavailable'};
+    const per=Math.max(1,Math.min(lim.images.maxCount||3,3));
+    let lab=null,date=null,markers=[],finds=[];
+    for(let i=0;i<imgs.length;i+=per){
+      const batch=imgs.slice(i,i+per);
+      ui.progress=`Claude is reading page${batch.length>1?'s':''} ${i+1}${batch.length>1?'–'+(i+batch.length):''} of ${imgs.length}. This takes up to a minute.`;render();
+      const res=await sampleFn.json(promptFor(batch.length),{images:batch,signal:ui.ctl.signal});
+      if(!res||(!Array.isArray(res.markers)&&!Array.isArray(res.findings)))throw {code:'invalid_json'};
+      lab=lab||res.lab;date=date||res.date;markers=markers.concat(res.markers||[]);finds=finds.concat(res.findings||[]);
+    }
+    const seen=new Set();const rows=[];
+    for(const m of markers){
+      const v=Number(m.value);if(!isFinite(v)||!m.name)continue;
+      const key=BYKEY[m.key]?m.key:'other';const id=key+'|'+(key==='other'?String(m.name).toLowerCase():'')+'|'+v;
+      if(seen.has(id))continue;seen.add(id);
+      rows.push({include:true,key,name:String(m.name),rawValue:v,rawUnit:String(m.unit||''),rawLow:m.low==null?null:Number(m.low),rawHigh:m.high==null?null:Number(m.high),flag:m.flag||null});
+    }
+    let dt=null;if(/^\d{4}-\d{2}-\d{2}$/.test(date||'')){let [y,mo,da]=date.split('-').map(Number);if(y>2400)y-=543;dt=`${y}-${String(mo).padStart(2,'0')}-${String(da).padStart(2,'0')}`}
+    const fseen=new Set(),fr=[];
+    for(const f of finds){if(!f||!f.name||f.result==null||String(f.result).trim()==='')continue;const id=(String(f.name)+'|'+String(f.result)).toLowerCase();if(fseen.has(id))continue;fseen.add(id);
+      fr.push({include:true,name:String(f.name),result:String(f.result),flag:f.flag==='abnormal'?'abnormal':f.flag==='normal'?'normal':null,group:GROUPS.includes(f.group)?f.group:'Other'})}
+    ui.draft={date:dt,lab:lab||'',rows,finds:fr};ui.step='review';track('report_read');
+  }catch(e){
+    ui.step='pick';
+    const c=e&&e.code;
+    ui.msg=errMsg(c);
+  }
+  ui.ctl=null;render();
+}
+
+/* ---------- actions ---------- */
+function saveDraft(){
+  const d=ui.draft;
+  if(!d.date){ui.msg='Enter the report date before saving. You can find it next to "Date of examination" or "Collected" on the report.';render();const el=$('d-date');if(el){el.style.borderColor='var(--high)';el.focus()}return}
+  const markers=d.rows.filter(r=>r.include&&isFinite(Number(r.rawValue))).map(r=>{const c=calc(r),e=BYKEY[r.key];
+    return {key:r.key,label:e?e.n:r.name,cat:e?e.c:'other',value:c.value,unit:c.unit,low:c.low,high:c.high,flag:r.flag}});
+  const findings=d.finds.filter(f=>f.include&&f.name.trim()&&String(f.result).trim()).map(f=>({name:f.name.trim(),result:String(f.result).trim(),flag:f.flag,group:f.group}));
+  if(!markers.length&&!findings.length)return;
+  S.reports.push({id:'r'+Date.now().toString(36),date:d.date,lab:d.lab.trim(),markers,findings,addedAt:Date.now()});track('report_saved');
+  save();ui.msg='';ui.draft=null;ui.files=[];ui.step='pick';ui.tab='dash';render();
+}
+function alert_(el){if(el){el.style.borderColor='var(--high)'}}
+async function exportData(){
+  const name='labtrail-backup-'+TODAY()+'.json',json=JSON.stringify(S,null,1);
+  try{
+    const file=new File([json],name,{type:'application/json'});
+    if(/iPhone|iPad|Android/i.test(navigator.userAgent||'')&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Labtrail backup'});ui.note='Backup shared. Save it to Files, Drive or send it to yourself.'}
+    else if(downloadsFn){await downloadsFn.save({filename:name,data:json});ui.note='Backup saved.'}
+    else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);ui.note='Backup downloaded. Keep it somewhere safe.'}
+    S.backupRev=S.rev||0;persist();
+  }catch(e){ui.note=(e&&e.name==='AbortError')?'':'Backup was not saved.'}
+  render();
+}
+function importFile(e){
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();rd.onload=()=>{try{const j=JSON.parse(rd.result);if(!Array.isArray(j.reports))throw 0;S=fixState(j);S.backupRev=S.rev||0;persist();ui.tab='dash';ui.note='Backup restored.'}catch(x){ui.note='That file is not a Labtrail backup.'}render()};rd.readAsText(f);
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]');if(!t)return;
+  const a=t.dataset.act;
+  if(a==='closesheet'){if(e.target===t||t.tagName==='BUTTON')closeSheet();return}
+  if(a==='tab'){ui.tab=t.dataset.tab;ui.confirmDel=null;ui.confirmAll=false;ui.note='';ui.msg='';ui.vmsg='';closeSheet();render();window.scrollTo(0,0);track('tab_'+ui.tab)}
+  else if(a==='detail')openDetail(t.dataset.key);
+  else if(a==='sex'){S.sex=S.sex===t.dataset.v?'':t.dataset.v;save();render()}
+  else if(a==='units'){S.units=t.dataset.u;save();render()}
+  else if(a==='rmfile'){ui.files.splice(+t.dataset.i,1);render()}
+  else if(a==='read')readReport();
+  else if(a==='stop'){ui.ctl&&ui.ctl.abort()}
+  else if(a==='savedraft')saveDraft();
+  else if(a==='discard'){ui.msg='';ui.draft=null;ui.files=[];ui.step='pick';render()}
+  else if(a==='askdel'){ui.confirmDel=t.dataset.id;render()}
+  else if(a==='delrep'){S.reports=S.reports.filter(r=>r.id!==t.dataset.id);ui.confirmDel=null;save();render()}
+  else if(a==='askwipe'){ui.confirmAll=true;render()}
+  else if(a==='wipe'){S=Object.assign(blank(),{units:S.units});ui.confirmAll=false;save();render()}
+  else if(a==='export')exportData();
+  else if(a==='cat'){ui.cat[t.dataset.c]=t.dataset.open!=='1';render()}
+  else if(a==='catall'){const o=t.dataset.o==='1';CAT_ORDER.forEach(c=>ui.cat[c]=o);render()}
+  else if(a==='view'){ui.view=t.dataset.v;render()}
+  else if(a==='allprio'){ui.allPrio=!ui.allPrio;render()}
+  else if(a==='rep'){ui.rep[t.dataset.id]=t.dataset.open!=='1';render()}
+  else if(a==='vgrp'){ui.vg[t.dataset.g]=t.dataset.open!=='1';render()}
+  else if(a==='seeexample'){const el=$('example');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
+  else if(a==='share')shareSummary();
+  else if(a==='print')printDash();
+  else if(a==='dlapp')downloadApp();
+  else if(a==='copyremix')copyRemix();
+  else if(a==='togglesens'){S.hideSens=!S.hideSens;save();render()}
+  else if(a==='scanform'){ui.scanForm=true;ui.scan=newScan('inbody');ui.msg='';render()}
+  else if(a==='scancancel'){ui.scanForm=false;ui.scan=null;ui.msg='';render()}
+  else if(a==='scansave')saveScan();
+  else if(a==='scanrow'){ui.scan.rows.push({label:'',value:'',unit:'',ref:'',st:'none'});render()}
+  else if(a==='scanrm'){ui.scan.rows.splice(+t.dataset.i,1);render()}
+  else if(a==='scanask'){ui.confirmDel=t.dataset.id;render()}
+  else if(a==='scandel'){S.scans=S.scans.filter(s=>s.id!==t.dataset.id);ui.confirmDel=null;save();render()}
+  else if(a==='vopen'){ui.vopen=ui.vopen===t.dataset.k?null:t.dataset.k;ui.vmsg='';render()}
+  else if(a==='adddose'){const k=t.dataset.k,d=$('vd-'+k).value;if(!d){ui.vmsg='Enter the date of the dose.';render();return}
+    const v=S.vax[k]||(S.vax[k]={doses:[]});v.doses=v.doses||[];v.doses.push({id:'d'+Date.now().toString(36),date:d,note:$('vn-'+k).value.trim(),due:$('vb-'+k).value||''});v.not=false;ui.vmsg='';save();render()}
+  else if(a==='deldose'){const v=S.vax[t.dataset.k];if(v){v.doses=(v.doses||[]).filter(x=>x.id!==t.dataset.id);save();render()}}
+  else if(a==='vnot'){const v=S.vax[t.dataset.k]||(S.vax[t.dataset.k]={doses:[]});v.not=!v.not;save();render()}
+  else if(a==='vrm'){S.vaxCustom=S.vaxCustom.filter(c=>c.k!==t.dataset.k);delete S.vax[t.dataset.k];ui.vopen=null;save();render()}
+  else if(a==='addvax'){const n=$('vcustom').value.trim();if(!n)return;const k='c'+Date.now().toString(36);S.vaxCustom.push({k,n});ui.vopen=k;save();render()}
+  else if(a==='addnote'){const d=$('n-date').value,tx=$('n-text').value.trim();if(!d||!tx){ui.msg='Add a date and a short note.';render();return}
+    ui.msg='';S.notes.push({id:'n'+Date.now().toString(36),date:d,text:tx});save();render();const el=$('n-text');if(el)el.focus()}
+  else if(a==='asknote'){ui.confirmDel=t.dataset.id;render()}
+  else if(a==='delnote'){S.notes=S.notes.filter(n=>n.id!==t.dataset.id);ui.confirmDel=null;save();render()}
+});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.id==='consent'){ui.consent=t.checked;return}
+  if(t.id==='acode'){lsSet('lt.code',t.value.trim());return}
+  if(t.dataset.sf&&ui.scan){ui.scan[t.dataset.sf]=t.value;return}
+  if(t.dataset.sr!==undefined&&ui.scan){ui.scan.rows[+t.dataset.sr][t.dataset.f]=t.value;return}
+  if(t.dataset.find!==undefined&&ui.draft){const r=ui.draft.finds[+t.dataset.find];if(t.dataset.f==='include'){r.include=t.checked;$('frow-'+t.dataset.find).classList.toggle('off',!r.include)}else r[t.dataset.f]=t.value;return}
+  if(t.id==='d-date'&&ui.draft){ui.draft.date=t.value;t.style.borderColor='';return}
+  if(t.id==='d-lab'&&ui.draft){ui.draft.lab=t.value;return}
+  if(t.dataset.row!==undefined&&ui.draft){
+    const i=+t.dataset.row,r=ui.draft.rows[i],f=t.dataset.f;
+    if(f==='include'){r.include=t.checked;$('row-'+i).classList.toggle('off',!r.include);return}
+    r[f]=t.value;
+    const c=calc(r);const el=$('calc-'+i);el.textContent=calcText(r,c);el.classList.toggle('warn',c.warn);
+  }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.sf==='type'&&ui.scan){const empty=ui.scan.rows.every(r=>!String(r.value).trim());const keep={date:ui.scan.date,lab:ui.scan.lab,note:ui.scan.note};ui.scan=empty?Object.assign(newScan(t.value),keep):Object.assign(ui.scan,{type:t.value});render();return}
+  if(t.dataset.row!==undefined&&t.dataset.f==='key'&&ui.draft){
+    const r=ui.draft.rows[+t.dataset.row];r.key=t.value;
+    const c=calc(r);const el=$('calc-'+t.dataset.row);el.textContent=calcText(r,c);el.classList.toggle('warn',c.warn);
+  }
+});
+render();
+</script>
+
+</body></html>
